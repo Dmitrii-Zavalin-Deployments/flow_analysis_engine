@@ -11,6 +11,13 @@ jobs:
       - name: 🛎️ Checkout repository
         uses: actions/checkout@v3
 
+      # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
+      - name: 🤖 Initialize Robot Identity & Notes
+        run: |
+          git config --global user.name "Automation Engine"
+          git config --global user.email "automation@yourdomain"
+          git config --global notes.rewriteRef "refs/notes/*"
+
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
@@ -30,17 +37,16 @@ jobs:
           vulture src || echo "⚠️ Vulture found unused code — review manually if needed"
 
       - name: 🚀 Commit autoflake changes
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
-          git config --global user.name "${GIT_USER_NAME}"
-          git config --global user.email "${GIT_USER_EMAIL}"
           git add .
-          git diff --cached --quiet || (
-            git commit -m "🧹 Auto-clean: removed unused imports and variables"
-            git push || echo "No changes to push"
-          )
+          if ! git diff --cached --quiet; then
+            git commit -m "🤖 robot: auto-clean unused imports & variables"
+            git notes add -m "robot: true"
+            git push origin HEAD
+            git push origin refs/notes/* || true
+          else
+            echo "No autoflake changes to commit."
+          fi
   
   integrity-check:
     name: Integrity Investigation
@@ -50,6 +56,13 @@ jobs:
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
+
+      # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
+      - name: 🤖 Initialize Robot Identity & Notes
+        run: |
+          git config --global user.name "Automation Engine"
+          git config --global user.email "automation@yourdomain"
+          git config --global notes.rewriteRef "refs/notes/*"
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
@@ -101,9 +114,3 @@ jobs:
 
       - name: ✅ Validate fluid_simulation_input.json
         run: python validators/validate_fluid_simulation_input.py
-
-      # - name: Run validation tests
-      #   run: pytest tests/
-
-
-
