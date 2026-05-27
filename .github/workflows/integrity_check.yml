@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: 🛎️ Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
       - name: 🤖 Initialize Robot Identity & Notes
@@ -36,17 +38,24 @@ jobs:
         run: |
           vulture src || echo "⚠️ Vulture found unused code — review manually if needed"
 
-      - name: 🚀 Commit autoflake changes
+      - name: 🚀 Commit autoflake changes + Sync Notes
         run: |
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "🤖 robot: auto-clean unused imports & variables"
+            TARGET_COMMIT=$(git rev-parse HEAD)
 
-            # Inline Git Notes
-            git notes add -m "robot: true" || true
-            git push origin refs/notes/* || true
+            # 1️⃣ Fetch remote notes FIRST
+            git fetch origin refs/notes/commits:refs/notes/commits || true
 
+            # 2️⃣ Add note locally
+            git notes add -f -m "robot: true" "$TARGET_COMMIT"
+
+            # 3️⃣ Push commit
             git push origin HEAD
+
+            # 4️⃣ Force-push notes
+            git push --force origin refs/notes/commits
           else
             echo "No autoflake changes to commit."
           fi
@@ -59,8 +68,9 @@ jobs:
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 🔧 GLOBAL ROBOT IDENTITY + NOTES INITIALIZATION
       - name: 🤖 Initialize Robot Identity & Notes
         run: |
           git config --global user.name "Automation Engine"
@@ -99,9 +109,6 @@ jobs:
 
       - name: 🧭 Show PYTHONPATH
         run: echo $PYTHONPATH
-
-      # - name: ✅ Validate navier_stokes_results using shell script
-      #   run: validators/validate_navier_stokes_results.sh
 
       - name: ✅ Validate enriched_metadata.json
         run: python validators/validate_enriched_metadata.py
