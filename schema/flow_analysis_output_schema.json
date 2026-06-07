@@ -8,11 +8,24 @@
 
     "inputs": {
       "type": "object",
-      "description": "Metadata about the Navier-Stokes snapshot(s) used for analysis.",
+      "description": "Metadata about the Navier-Stokes snapshot(s) and auxiliary data used for analysis.",
+      "additionalProperties": false,
       "properties": {
+
         "snapshot_files": {
           "type": "array",
+          "description": "List of HDF5 snapshot files exported by the Navier-Stokes solver.",
           "items": { "type": "string" }
+        },
+
+        "environment_file": {
+          "type": "string",
+          "description": "Environment JSON containing fluid density, viscosity, and domain configuration."
+        },
+
+        "turbine_geometry_file": {
+          "type": "string",
+          "description": "Optional geometry/region definition file for turbine surfaces, rotor disk, wake region, etc."
         }
       },
       "required": ["snapshot_files"]
@@ -20,8 +33,57 @@
 
     "config": {
       "type": "object",
-      "description": "Analysis configuration (e.g., turbulence model, thresholds).",
-      "additionalProperties": true
+      "description": "Analysis configuration controlling turbulence metrics, integration regions, and thresholds.",
+      "additionalProperties": false,
+      "properties": {
+
+        "region_of_interest": {
+          "type": "string",
+          "description": "Name of the region to analyze: 'full_domain', 'rotor_disk', 'wake_region', etc."
+        },
+
+        "derivative_scheme": {
+          "type": "string",
+          "enum": ["central", "upwind", "spectral"],
+          "description": "Scheme used for computing velocity gradients."
+        },
+
+        "smoothing_filter": {
+          "type": "string",
+          "enum": ["none", "gaussian", "box"],
+          "description": "Optional smoothing applied before turbulence metrics."
+        },
+
+        "q_criterion_threshold": {
+          "type": "number",
+          "description": "Threshold for vortex identification using Q-criterion."
+        },
+
+        "streamline_seeding": {
+          "type": "object",
+          "description": "Configuration for streamline/pathline generation.",
+          "properties": {
+            "seed_plane": { "type": "string", "description": "Plane where seeds are placed: 'inlet', 'rotor', 'custom'." },
+            "num_seeds": { "type": "integer", "minimum": 1 },
+            "integration_length": { "type": "number", "description": "Maximum streamline length." }
+          }
+        },
+
+        "load_integration": {
+          "type": "object",
+          "description": "Configuration for computing pressure/shear forces.",
+          "properties": {
+            "surface_definition": { "type": "string", "description": "Name of turbine surface region to integrate over." },
+            "reference_frame": { "type": "string", "enum": ["global", "rotor"], "description": "Coordinate frame for forces." }
+          }
+        },
+
+        "comparison_targets": {
+          "type": "array",
+          "description": "List of metrics to compare with test data.",
+          "items": { "type": "string" }
+        }
+      }
     },
 
     "results": {
@@ -33,12 +95,19 @@
 
         "flow_paths": {
           "type": "array",
-          "description": "Representative streamlines or pathlines.",
+          "description": "Representative streamlines or pathlines computed from velocity fields.",
           "items": {
             "type": "object",
             "properties": {
+              "seed_point": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              },
               "points": {
                 "type": "array",
+                "description": "Ordered list of 3D points along the streamline.",
                 "items": {
                   "type": "array",
                   "items": { "type": "number" },
@@ -53,55 +122,111 @@
 
         "velocity_statistics": {
           "type": "object",
+          "description": "Statistical properties of the velocity field in the region of interest.",
           "properties": {
             "mean_speed": { "type": "number" },
             "max_speed": { "type": "number" },
-            "rms_speed": { "type": "number" }
+            "rms_speed": { "type": "number" },
+            "speed_histogram": {
+              "type": "array",
+              "description": "Histogram of speed magnitudes for visualization.",
+              "items": { "type": "number" }
+            }
           }
         },
 
         "energy_transport": {
           "type": "object",
+          "description": "Energy transport metrics derived from velocity and density.",
           "properties": {
-            "kinetic_energy_field": { "type": "string" },
-            "energy_flux_integral": { "type": "number" }
+            "kinetic_energy_field": {
+              "type": "string",
+              "description": "Path to derived HDF5 dataset containing kinetic energy density."
+            },
+            "energy_flux_integral": {
+              "type": "number",
+              "description": "Integrated kinetic energy flux across a defined plane or surface."
+            }
           }
         },
 
         "turbulence_metrics": {
           "type": "object",
+          "description": "Derived turbulence quantities based on velocity gradients.",
           "properties": {
-            "vorticity_field": { "type": "string" },
-            "q_criterion_field": { "type": "string" },
-            "turbulence_intensity": { "type": "number" }
+            "vorticity_field": {
+              "type": "string",
+              "description": "Path to derived HDF5 dataset containing vorticity magnitude."
+            },
+            "q_criterion_field": {
+              "type": "string",
+              "description": "Path to derived HDF5 dataset containing Q-criterion values."
+            },
+            "turbulence_intensity": {
+              "type": "number",
+              "description": "Scalar turbulence intensity metric for the region of interest."
+            }
           }
         },
 
         "instability_indicators": {
           "type": "object",
+          "description": "Indicators of flow separation, stall, and unsteady oscillations.",
           "properties": {
-            "regions_of_separation": { "type": "array", "items": { "type": "string" } },
-            "stall_risk": { "type": "number" },
-            "oscillation_modes": { "type": "array", "items": { "type": "number" } }
+            "regions_of_separation": {
+              "type": "array",
+              "description": "List of region identifiers where separation is detected.",
+              "items": { "type": "string" }
+            },
+            "stall_risk": {
+              "type": "number",
+              "description": "Scalar stall risk index (0–1)."
+            },
+            "oscillation_modes": {
+              "type": "array",
+              "description": "Dominant oscillation frequencies extracted from time-series data.",
+              "items": { "type": "number" }
+            }
           }
         },
 
         "loading_and_performance": {
           "type": "object",
+          "description": "Force and moment metrics derived from pressure and shear fields.",
           "properties": {
-            "pressure_forces": { "type": "array", "items": { "type": "number" } },
-            "shear_forces": { "type": "array", "items": { "type": "number" } },
-            "net_force": { "type": "array", "items": { "type": "number" } },
-            "net_moment": { "type": "array", "items": { "type": "number" } }
+            "pressure_forces": {
+              "type": "array",
+              "description": "Integrated pressure forces [Fx, Fy, Fz] on turbine surfaces.",
+              "items": { "type": "number" }
+            },
+            "shear_forces": {
+              "type": "array",
+              "description": "Integrated viscous shear forces [Fx, Fy, Fz].",
+              "items": { "type": "number" }
+            },
+            "net_force": {
+              "type": "array",
+              "description": "Total force vector [Fx, Fy, Fz].",
+              "items": { "type": "number" }
+            },
+            "net_moment": {
+              "type": "array",
+              "description": "Total moment vector [Mx, My, Mz] about the reference axis.",
+              "items": { "type": "number" }
+            }
           }
         },
 
         "comparison_metrics": {
           "type": "object",
+          "description": "Comparison of simulation metrics with experimental or benchmark data.",
           "properties": {
             "rmse_vs_test": { "type": "number" },
             "correlation_coefficient": { "type": "number" },
-            "deviation_map": { "type": "string" }
+            "deviation_map": {
+              "type": "string",
+              "description": "Path to a deviation field or visualization asset."
+            }
           }
         }
       },
