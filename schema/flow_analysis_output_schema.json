@@ -1,0 +1,118 @@
+{
+  "$id": "flow_analysis_output.schema.json",
+  "title": "Flow Analysis Engine Output",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+
+    "inputs": {
+      "type": "object",
+      "description": "Metadata about the Navier-Stokes snapshot(s) used for analysis.",
+      "properties": {
+        "snapshot_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["snapshot_files"]
+    },
+
+    "config": {
+      "type": "object",
+      "description": "Analysis configuration (e.g., turbulence model, thresholds).",
+      "additionalProperties": true
+    },
+
+    "results": {
+      "type": "object",
+      "description": "Post-processed flow metrics and performance indicators.",
+      "additionalProperties": false,
+
+      "properties": {
+
+        "flow_paths": {
+          "type": "array",
+          "description": "Representative streamlines or pathlines.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 3,
+                  "maxItems": 3
+                }
+              }
+            },
+            "required": ["points"]
+          }
+        },
+
+        "velocity_statistics": {
+          "type": "object",
+          "properties": {
+            "mean_speed": { "type": "number" },
+            "max_speed": { "type": "number" },
+            "rms_speed": { "type": "number" }
+          }
+        },
+
+        "energy_transport": {
+          "type": "object",
+          "properties": {
+            "kinetic_energy_field": { "type": "string" },
+            "energy_flux_integral": { "type": "number" }
+          }
+        },
+
+        "turbulence_metrics": {
+          "type": "object",
+          "properties": {
+            "vorticity_field": { "type": "string" },
+            "q_criterion_field": { "type": "string" },
+            "turbulence_intensity": { "type": "number" }
+          }
+        },
+
+        "instability_indicators": {
+          "type": "object",
+          "properties": {
+            "regions_of_separation": { "type": "array", "items": { "type": "string" } },
+            "stall_risk": { "type": "number" },
+            "oscillation_modes": { "type": "array", "items": { "type": "number" } }
+          }
+        },
+
+        "loading_and_performance": {
+          "type": "object",
+          "properties": {
+            "pressure_forces": { "type": "array", "items": { "type": "number" } },
+            "shear_forces": { "type": "array", "items": { "type": "number" } },
+            "net_force": { "type": "array", "items": { "type": "number" } },
+            "net_moment": { "type": "array", "items": { "type": "number" } }
+          }
+        },
+
+        "comparison_metrics": {
+          "type": "object",
+          "properties": {
+            "rmse_vs_test": { "type": "number" },
+            "correlation_coefficient": { "type": "number" },
+            "deviation_map": { "type": "string" }
+          }
+        }
+      },
+
+      "required": [
+        "velocity_statistics",
+        "turbulence_metrics",
+        "loading_and_performance"
+      ]
+    }
+  },
+
+  "required": ["inputs", "config", "results"]
+}
