@@ -1,10 +1,5 @@
-numpy>=1.24
-PyYAML>=6.0
-pytest>=8.0
-jsonschema>=4.19.0
-pytest-cov>=4.1.0  # Used for measuring test coverage
-autoflake>=2.2.1   # Used for automatically removing unused imports and variables
-vulture>=2.9       # Used for finding and reporting dead code
-
-
-
+numpy>=1.26.0
+scipy>=1.11.0
+plotly>=5.18.0
+jsonschema>=4.20.0
+pytest>=8.0.0
