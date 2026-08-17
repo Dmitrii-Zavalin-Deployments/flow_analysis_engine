@@ -230,16 +230,16 @@ jobs:
           SAMPLER_PID=$!
           
           INPUT_FILE="data/testing-input-output/flow_analysis_engine_input.json"
-          if [ -z "$INPUT_JSON" ]; then
-            echo "❌ CRITICAL ERROR: Explicit parameter contract violation. No input .json file located in data/testing-input-output/."
+          if [ ! -f "$INPUT_FILE" ]; then
+            echo "❌ CRITICAL ERROR: Input file context missing at $INPUT_FILE."
             exit 1
           fi
           
           # Run core execution module under verbose tool monitoring to record Peak Resident Set Size (RSS)
           /usr/bin/time -v xvfb-run --auto-servernum python src/main.py \
             --input_output_folder "${GITHUB_WORKSPACE}/data/testing-input-output/" \
-            --input_file_name "$INPUT_JSON" \
-            --output_file_name "flow_analysis_output.json" 2> /tmp/memory_profile.log || true
+            --input_file_name "flow_analysis_engine_input.json" \
+            --output_file_name "flow_analysis_output.json" 2> /tmp/memory_profile.log
           
           # Unwind profile monitoring immediately post-execution 
           kill $SAMPLER_PID
