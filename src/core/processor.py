@@ -36,7 +36,6 @@ def process_flow_data(raw_data: dict) -> dict:
 
     mask = inputs.get("mask", [0] * (nx * ny * nz))
 
-    # Analytical velocity estimates
     u_inflow = 1.0
     for bc in inputs.get("boundary_conditions", []):
         if bc.get("location") == "x_min" and "values" in bc:
