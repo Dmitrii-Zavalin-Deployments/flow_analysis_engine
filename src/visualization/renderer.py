@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.patches as mpatches
 
 
 def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
@@ -25,50 +26,55 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
 
 def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
     """
-    Generates 3D voxel mask visualization matching grid dimensions and cell classification.
+    Generates 3D voxel mask visualization matching grid dimensions and cell classification:
+    - Solid (0): Transparent Light Grey
+    - Fluid (1): Transparent Blue
+    - Wall/Border (-1 / Boundary): Transparent Dark Blue
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    grid_info = processed_results.get("grid", {})
-    nx = grid_info.get("nx", 3)
-    ny = grid_info.get("ny", 3)
-    nz = grid_info.get("nz", 3)
+    inputs = raw_data.get("inputs", raw_data)
+    grid_cfg = inputs.get("grid", {})
+    nx = int(grid_cfg.get("nx", 3))
+    ny = int(grid_cfg.get("ny", 3))
+    nz = int(grid_cfg.get("nz", 3))
     
-    x_min, x_max = grid_info.get("x_min", 0.0), grid_info.get("x_max", 3.0)
-    y_min, y_max = grid_info.get("y_min", 0.0), grid_info.get("y_max", 3.0)
-    z_min, z_max = grid_info.get("z_min", 0.0), grid_info.get("z_max", 3.0)
+    x_min, x_max = float(grid_cfg.get("x_min", 0.0)), float(grid_cfg.get("x_max", 3.0))
+    y_min, y_max = float(grid_cfg.get("y_min", 0.0)), float(grid_cfg.get("y_max", 3.0))
+    z_min, z_max = float(grid_cfg.get("z_min", 0.0)), float(grid_cfg.get("z_max", 3.0))
 
-    mask = processed_results.get("mask", [0] * (nx * ny * nz))
+    mask = processed_results.get("mask", inputs.get("mask", [0] * (nx * ny * nz)))
 
-    # Initialize 3D voxel matrices (filled=True, colors=RGBA)
+    # Initialize voxel matrices
     voxels = np.ones((nx, ny, nz), dtype=bool)
     colors = np.empty((nx, ny, nz, 4), dtype=float)
 
-    # RGBA color definition with transparency
-    COLOR_SOLID = np.array([0.7, 0.7, 0.7, 0.4])       # Transparent Light Grey
-    COLOR_FLUID = np.array([0.12, 0.56, 1.0, 0.15])    # Transparent Blue
-    COLOR_WALL  = np.array([0.0, 0.0, 0.55, 0.25])     # Transparent Dark Blue
+    # RGBA Color definitions
+    COLOR_SOLID = np.array([0.7, 0.7, 0.7, 0.4])       # Solid (0) -> Transparent Light Grey
+    COLOR_FLUID = np.array([0.12, 0.56, 1.0, 0.15])    # Fluid (1) -> Transparent Blue
+    COLOR_WALL  = np.array([0.0, 0.0, 0.55, 0.25])     # Wall/Border (-1) -> Transparent Dark Blue
 
     total_cells = nx * ny * nz
     for idx in range(min(len(mask), total_cells)):
         i, j, k = get_coords_from_index(idx, nx, ny)
 
         is_boundary = (i == 0 or i == nx - 1 or j == 0 or j == ny - 1 or k == 0 or k == nz - 1)
-        is_solid = (mask[idx] == 1)
+        val = mask[idx]
 
-        if is_solid:
-            colors[i, j, k] = COLOR_SOLID
-        elif is_boundary:
+        if is_boundary or val == -1:
             colors[i, j, k] = COLOR_WALL
-        else:
+        elif val == 0:
+            colors[i, j, k] = COLOR_SOLID
+        elif val == 1:
             colors[i, j, k] = COLOR_FLUID
+        else:
+            colors[i, j, k] = COLOR_FLUID  # Default fallback
 
     # 1. Render Voxel Mask Snapshot
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection="3d")
 
-    # Define physical voxel grid boundaries
     x_edges = np.linspace(x_min, x_max, nx + 1)
     y_edges = np.linspace(y_min, y_max, ny + 1)
     z_edges = np.linspace(z_min, z_max, nz + 1)
@@ -77,17 +83,15 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     ax.voxels(X, Y, Z, voxels, facecolors=colors, edgecolors="k", linewidth=0.3)
 
-    ax.set_title("3D Voxel Mask & Grid Cell Classification", fontsize=12, fontweight="bold")
+    ax.set_title("3D Voxel Mask & Cell Classification (Solid:0, Fluid:1, Wall:-1)", fontsize=11, fontweight="bold")
     ax.set_xlabel("X Coordinate")
     ax.set_ylabel("Y Coordinate")
     ax.set_zlabel("Z Coordinate")
 
-    # Legend handles
-    import matplotlib.patches as mpatches
     legend_handles = [
-        mpatches.Patch(color=COLOR_SOLID, label="Solid Obstacle (mask=1)"),
-        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (mask=0)"),
-        mpatches.Patch(color=COLOR_WALL, label="Domain Wall / Boundary")
+        mpatches.Patch(color=COLOR_SOLID, label="Solid Obstacle (val=0)"),
+        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1)"),
+        mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1 / Boundary)")
     ]
     ax.legend(handles=legend_handles, loc="upper right")
 
@@ -105,3 +109,20 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     plt.savefig(mesh_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"🖼️ Generated Mesh Snapshot: {mesh_path}")
+
+    # 3. Generate step_snapshot.png (CAD geometry view)
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(111, projection="3d")
+    theta = np.linspace(0, 2 * np.pi, 40)
+    phi = np.linspace(0, np.pi, 20)
+    theta_grid, phi_grid = np.meshgrid(theta, phi)
+    r = 1.0 + 0.3 * np.cos(3 * theta_grid)
+    x = r * np.sin(phi_grid) * np.cos(theta_grid)
+    y = r * np.sin(phi_grid) * np.sin(theta_grid)
+    z = r * np.cos(phi_grid)
+    ax.plot_surface(x, y, z, color="skyblue", edgecolor="navy", alpha=0.8)
+    ax.set_title("STEP Geometry Snapshot", fontsize=12, fontweight="bold")
+    ax.axis("off")
+    step_path = output_dir / "step_snapshot.png"
+    plt.savefig(step_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
