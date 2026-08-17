@@ -1,0 +1,14 @@
+{
+  "status": "success",
+  "metrics": {
+    "max_velocity": 1.4142135623730951,
+    "mean_velocity": 0.76705890375146,
+    "reynolds_number": 1000.0,
+    "grid_resolution": [
+      64,
+      64,
+      64
+    ]
+  },
+  "summary": "Flow analysis processing completed successfully."
+}
