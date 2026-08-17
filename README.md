@@ -1,1 +1,0 @@
-# simulators_integrity_investigation

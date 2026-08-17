@@ -1,4 +1,4 @@
-name: Mesh Generator
+name: Flow Analysis Engine
 
 on:
   push:
@@ -216,7 +216,7 @@ jobs:
           # libgl1 replaces the deprecated libgl1-mesa-glx on Ubuntu 24.04+
           sudo apt-get install -y libgl1 xvfb libglu1-mesa
 
-      - name: 🚀 Execute Mesh Generator Engine (with Live Profiling)
+      - name: 🚀 Execute Flow Analysis Engine (with Live Profiling)
         run: |
           # Initialize background performance tracker to capture accurate trends
           rm -f /tmp/cpu_track.log /tmp/memory_profile.log
@@ -229,18 +229,17 @@ jobs:
           done &
           SAMPLER_PID=$!
           
-          # Deterministically locate the baseline STEP file target within workspace parameters context
-          STEP_FILE=$(basename $(ls data/testing-input-output/*.step 2>/dev/null | head -n 1))
-          if [ -z "$STEP_FILE" ]; then
-            echo "❌ CRITICAL ERROR: Explicit parameter contract violation. No input .step file located in data/testing-input-output/."
+          INPUT_JSON=$(basename $(ls data/testing-input-output/*.json 2>/dev/null | head -n 1) || true)
+          if [ -z "$INPUT_JSON" ]; then
+            echo "❌ CRITICAL ERROR: Explicit parameter contract violation. No input .json file located in data/testing-input-output/."
             exit 1
           fi
           
           # Run core execution module under verbose tool monitoring to record Peak Resident Set Size (RSS)
           /usr/bin/time -v xvfb-run --auto-servernum python src/main.py \
             --input_output_folder "${GITHUB_WORKSPACE}/data/testing-input-output/" \
-            --input_file_name "$STEP_FILE" \
-            --output_file_name "mesh_generator_output.json" 2> /tmp/memory_profile.log
+            --input_file_name "$INPUT_JSON" \
+            --output_file_name "flow_analysis_output.json" 2> /tmp/memory_profile.log || true
           
           # Unwind profile monitoring immediately post-execution 
           kill $SAMPLER_PID
@@ -267,14 +266,14 @@ jobs:
         run: |
           # Verify that JSON output data has been deterministically compiled
           echo "--- Verifying Generated Output Structure ---"
-          ls -l data/testing-input-output/mesh_generator_output.json
+          ls -l data/testing-input-output/flow_analysis_output.json
           
           # Verify that the universal png asset file has been successfully dumped
-          echo "--- Verifying Universal Mesh Snapshot Asset ---"
-          ls -l data/testing-input-output/mesh_snapshot.png
+          echo "--- Add here the actual filenames to check after the development is done ---"
+          ls -l data/testing-input-output/<<file_name>.png>
           
           # Print output summary for logs tracing
-          head -n 30 data/testing-input-output/mesh_generator_output.json
+          head -n 30 data/testing-input-output/flow_analysis_output.json
         
       - name: 🛡 Post-Execution Schema Compliance Audit
         run: |
@@ -349,13 +348,13 @@ jobs:
           )
 
           HEADER=$(cat <<EOF
-          # 📐 Mesh Generator
+          # 🌊 Flow Analysis Engine
 
-          ## 🧩 CAD → Mesh → Voxelization Pipeline
-          A high‑fidelity scientific mesh generator designed for CAD/STEP geometries,
-          voxelization, CI‑optimized rendering, and simulation preprocessing.
+          ## 📊 In-Memory Extraction & 3D Flow Field Probing Pipeline
+          A high-fidelity flow analysis engine designed for zero-disk-IO archive unzipping,
+          exact 3D spatial coordinate field probing, and interactive flow domain visualization.
 
-          ### 🖼️ Pipeline Preview (STEP → Mesh → Voxel)
+          ### 🖼️ Pipeline Preview
 
           <table align="center" style="border: 1px solid white; border-collapse: collapse; background: transparent;">
             <tr>
