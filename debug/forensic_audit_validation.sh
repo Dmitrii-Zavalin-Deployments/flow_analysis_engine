@@ -2,42 +2,33 @@
 set -uo pipefail
 
 echo "=================================================="
-echo "🔍 FORENSIC AUDIT: Missing Input JSON Contract Failure"
+echo "🔍 FORENSIC AUDIT: Variable Mismatch / Input Contract Failure"
 echo "=================================================="
 
 echo "--- 1. File System & Directory Inspection ---"
-echo "Listing workspace root structure:"
-find . -maxdepth 3 -not -path '*/.*' -not -path './conda*'
-
-echo "Checking target input data directory status:"
-if [ -d "data/testing-input-output" ]; then
-    echo "✅ 'data/testing-input-output' exists. Listing contents:"
-    ls -la data/testing-input-output/
-else
-    echo "❌ CRITICAL: 'data/testing-input-output' directory does NOT exist."
-    echo "Searching for any .json files across the workspace:"
-    find . -name "*.json" -not -path '*/.*' -not -path './conda*'
-fi
+echo "Checking contents of data/testing-input-output/:"
+ls -la data/testing-input-output/ || echo "Directory not found"
 
 echo "--- 2. Pattern Matching / Grep Diagnostics ---"
-echo "Searching for input folder definitions and contract checks across codebase and workflows:"
-grep -rn "testing-input-output" .github/ src/ || echo "No references found."
+echo "Searching for INPUT_FILE and INPUT_JSON definitions in workflow files:"
+grep -rn "INPUT_FILE" .github/workflows/ || echo "No INPUT_FILE references found."
+grep -rn "INPUT_JSON" .github/workflows/ || echo "No INPUT_JSON references found."
 
 echo "--- 3. Smoking-Gun Source Audit (cat -n) ---"
-WORKFLOW_FILE=$(find .github/workflows -name "*.yml" -o -name "*.yaml" | head -n 1)
-if [ -n "$WORKFLOW_FILE" ]; then
-    echo "Inspecting active workflow file: $WORKFLOW_FILE"
-    cat -n "$WORKFLOW_FILE"
+WORKFLOW_FILE=".github/workflows/flow_analysis_engine.yml"
+if [ -f "$WORKFLOW_FILE" ]; then
+    echo "Inspecting active workflow file execution block (lines 218-245):"
+    sed -n '218,245p' "$WORKFLOW_FILE" | cat -n
 else
-    echo "❌ No GitHub Actions workflow file located."
+    echo "❌ Workflow file not found at $WORKFLOW_FILE."
 fi
 
 echo "=================================================="
 echo "🛠️ AUTOMATED REPAIR INJECTIONS (PRE-CONFIGURED)"
 echo "=================================================="
-echo "Uncomment the desired sed commands below to apply automated fixes."
+echo "Uncomment the desired sed commands below to apply automated fixes for the variable mismatch[cite: 1]:"
 
-# sed -i 's|if \[ -z "\$INPUT_JSON" \]; then|mkdir -p data/testing-input-output \&\& echo "{\\"parameters\\":{\\"grid_resolution\\":[32,32,32],\\"reynolds_number\\":1000.0}}" > data/testing-input-output/fallback_input.json\n          INPUT_JSON="fallback_input.json"\n          if [ -z "$INPUT_JSON" ]; then|g' .github/workflows/*.yml
-# sed -i 's|data/testing-input-output/|data/|g' .github/workflows/*.yml
+# sed -i 's|if \[ -z "\$INPUT_JSON" \]; then|INPUT_JSON=\$(basename "\$INPUT_FILE")\n          if [ -z "\$INPUT_JSON" ]; then|g' .github/workflows/flow_analysis_engine.yml
+# sed -i 's|INPUT_FILE="data/testing-input-output/flow_analysis_engine_input.json"|INPUT_JSON=\$(basename \$(ls data/testing-input-output/*.json 2>/dev/null | head -n 1))\n          INPUT_FILE="data/testing-input-output/\$INPUT_JSON"|g' .github/workflows/flow_analysis_engine.yml
 
 echo "Audit completed successfully."
