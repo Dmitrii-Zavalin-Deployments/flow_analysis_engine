@@ -26,10 +26,9 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
 
 def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
     """
-    Generates 3D voxel mask visualization matching grid dimensions and cell classification:
-    - Solid (0): Ultra-light transparent grey (allows seeing inner fluid cells)
-    - Fluid (1): Vibrant blue
-    - Wall/Border (-1): Deep near-black dark blue
+    Generates 3D voxel mask visualization:
+    - Fluid (1) & Wall (-1): Rendered as active, full 3D translucent cubes (all 6 faces visible).
+    - Solid (0): Set to False (omitted as solid blocks) to prevent internal face culling.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -46,31 +45,28 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     mask = processed_results.get("mask", inputs.get("mask", [0] * (nx * ny * nz)))
 
-    # Initialize voxel matrices
-    voxels = np.ones((nx, ny, nz), dtype=bool)
+    # Initialize voxel matrices: Only fluid and wall cells are active voxels (True)
+    # so Matplotlib renders all 6 faces of their 3D cubes without culling.
+    voxels = np.zeros((nx, ny, nz), dtype=bool)
     colors = np.empty((nx, ny, nz, 4), dtype=float)
 
-    # RGBA Color Definitions:
-    # Solid (0)  -> Ultra-light transparent grey (alpha=0.08)
-    # Fluid (1)  -> Electric blue (alpha=0.75)
-    # Wall (-1)   -> Near-black dark blue (alpha=0.85)
-    COLOR_SOLID = np.array([0.90, 0.90, 0.90, 0.08])
-    COLOR_FLUID = np.array([0.00, 0.45, 1.00, 0.75])
-    COLOR_WALL  = np.array([0.02, 0.02, 0.15, 0.85])
+    # RGBA Color Definitions for full transparent 3D cubes:
+    COLOR_FLUID = np.array([0.00, 0.45, 1.00, 0.60])   # Vibrant semi-transparent blue
+    COLOR_WALL  = np.array([0.02, 0.02, 0.15, 0.85])   # Near-black dark blue
 
     total_cells = nx * ny * nz
     for idx in range(min(len(mask), total_cells)):
         i, j, k = get_coords_from_index(idx, nx, ny)
         val = mask[idx]
 
-        if val == 0:
-            colors[i, j, k] = COLOR_SOLID
-        elif val == 1:
+        if val == 1:
+            voxels[i, j, k] = True
             colors[i, j, k] = COLOR_FLUID
         elif val == -1:
+            voxels[i, j, k] = True
             colors[i, j, k] = COLOR_WALL
         else:
-            colors[i, j, k] = COLOR_FLUID  # Fallback
+            voxels[i, j, k] = False  # Solid (0) cells are inactive, revealing inner fluid cubes
 
     # 1. Render Voxel Mask Snapshot
     fig = plt.figure(figsize=(9, 9))
@@ -82,16 +78,15 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
 
-    ax.voxels(X, Y, Z, voxels, facecolors=colors, edgecolors="k", linewidth=0.3)
+    ax.voxels(X, Y, Z, voxels, facecolors=colors, edgecolors="k", linewidth=0.4)
 
-    ax.set_title("3D Voxel Mask & Cell Classification (Solid:0, Fluid:1, Wall:-1)", fontsize=11, fontweight="bold", pad=15)
+    ax.set_title("3D Voxel Mask & Cell Classification (Fluid Cubes & Walls)", fontsize=11, fontweight="bold", pad=15)
     ax.set_xlabel("X Coordinate", labelpad=10)
     ax.set_ylabel("Y Coordinate", labelpad=10)
     ax.set_zlabel("Z Coordinate", labelpad=12)
 
     legend_handles = [
-        mpatches.Patch(color=COLOR_SOLID, label="Solid Obstacle (val=0)"),
-        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1)"),
+        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1) [Full 3D Cube]"),
         mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1)")
     ]
     ax.legend(handles=legend_handles, loc="upper right")
@@ -104,7 +99,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     # 2. Render Mesh Snapshot
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="3d")
-    ax.voxels(X, Y, Z, voxels, facecolors=[0, 0, 0, 0], edgecolors="blue", linewidth=0.5)
+    ax.voxels(X, Y, Z, np.ones((nx, ny, nz), dtype=bool), facecolors=[0, 0, 0, 0], edgecolors="blue", linewidth=0.5)
     ax.set_title("Computational Mesh Grid", fontsize=12, fontweight="bold")
     mesh_path = output_dir / "mesh_snapshot.png"
     plt.savefig(mesh_path, dpi=150, bbox_inches="tight")
