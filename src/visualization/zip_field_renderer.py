@@ -1,0 +1,152 @@
+"""
+In-Memory Zip Field Visualization Engine.
+Reads .npy simulation field arrays directly from a ZIP archive without extracting
+them to disk, generating 3D colormapped voxel visualizations with black borders.
+"""
+
+import io
+from pathlib import Path
+import zipfile
+import matplotlib
+matplotlib.use("Agg")  # Non-interactive headless backend
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarray:
+    """
+    Normalizes field data dimensions and handles vector fields (e.g. [u, v, w]).
+    Returns a 3D scalar array of shape (nx, ny, nz).
+    """
+    # 1. Handle flat 1D array
+    if data.ndim == 1:
+        data = data.reshape((nx, ny, nz), order="F")
+
+    # 2. Handle 4D vector fields (e.g. velocity magnitude calculation)
+    elif data.ndim == 4:
+        # Assuming shape (nx, ny, nz, 3) or (3, nx, ny, nz)
+        if data.shape[0] == 3 and data.shape[1] == nx:
+            data = np.linalg.norm(data, axis=0)
+        elif data.shape[-1] == 3:
+            data = np.linalg.norm(data, axis=-1)
+
+    return data
+
+
+def render_fields_from_zip(
+    zip_path: str | Path,
+    output_dir: str | Path,
+    grid_bounds: tuple[float, float, float, float, float, float] = (0.0, 3.0, 0.0, 3.0, 0.0, 3.0),
+    colormap_name: str = "viridis"
+) -> list[Path]:
+    """
+    Inspects a ZIP file, reads all contained .npy field files in-memory,
+    and generates matching 3D voxel colormap PNG images.
+    """
+    zip_path = Path(zip_path)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    x_min, x_max, y_min, y_max, z_min, z_max = grid_bounds
+    generated_pngs: list[Path] = []
+
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Target ZIP archive not found: {zip_path}")
+
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        # Filter for .npy array files
+        npy_files = [f for f in archive.namelist() if f.endswith(".npy")]
+        
+        if not npy_files:
+            print(f"⚠️ No .npy files found inside {zip_path.name}")
+            return generated_pngs
+
+        print(f"📦 Found {len(npy_files)} field file(s) inside {zip_path.name}")
+
+        for file_name in npy_files:
+            # Read .npy array directly from memory without extracting to disk
+            with archive.open(file_name) as npy_stream:
+                # Wrap in BytesIO for numpy loading compatibility
+                field_array = np.load(io.BytesIO(npy_stream.read()))
+
+            # Determine grid shape from array size
+            if field_array.ndim == 3:
+                nx, ny, nz = field_array.shape
+            else:
+                # Default to cube grid root calculation
+                total_elements = field_array.shape[0] if field_array.ndim == 1 else field_array.size
+                n_side = int(round(total_elements ** (1 / 3)))
+                nx, ny, nz = n_side, n_side, n_side
+
+            scalar_field = process_field_data(field_array, nx, ny, nz)
+
+            # Setup meshgrid boundaries
+            x_edges = np.linspace(x_min, x_max, nx + 1)
+            y_edges = np.linspace(y_min, y_max, ny + 1)
+            z_edges = np.linspace(z_min, z_max, nz + 1)
+            X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
+
+            # Map cell field values to RGBA colors
+            vmin, vmax = float(np.min(scalar_field)), float(np.max(scalar_field))
+            # Avoid division by zero for uniform fields
+            if np.isclose(vmin, vmax):
+                vmax = vmin + 1e-6
+
+            norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+            cmap = cm.get_cmap(colormap_name)
+            colors = cmap(norm(scalar_field))
+            colors[..., 3] = 0.75  # Set alpha transparency (75% opaque)
+
+            # Render 3D Voxel Field Plot
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection="3d")
+
+            filled_voxels = np.ones((nx, ny, nz), dtype=bool)
+
+            ax.voxels(
+                X, Y, Z, filled_voxels,
+                facecolors=colors,
+                edgecolors="k",  # Black border lines for maximum cell definition
+                linewidth=0.6
+            )
+
+            # Set domain constraints and display formatting
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            ax.set_zlim(z_min, z_max)
+
+            display_title = Path(file_name).stem
+            ax.set_title(f"3D Field Distribution: {display_title}", fontsize=12, fontweight="bold", pad=15)
+            ax.set_xlabel("X Coordinate", labelpad=8)
+            ax.set_ylabel("Y Coordinate", labelpad=8)
+            ax.set_zlabel("Z Coordinate", labelpad=10)
+
+            # Add Colorbar matching the scalar field magnitude
+            mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
+            mappable.set_array(scalar_field)
+            cbar = fig.colorbar(mappable, ax=ax, shrink=0.65, aspect=12, pad=0.1)
+            cbar.set_label("Field Magnitude / Value", rotation=270, labelpad=18, fontweight="bold")
+
+            # Save PNG snapshot
+            output_png_name = f"{display_title}_3d_verification.png"
+            output_path = output_dir / output_png_name
+            plt.savefig(output_path, dpi=150, bbox_inches="tight", pad_inches=0.3)
+            plt.close(fig)
+
+            print(f"🖼 Generated 3D field snapshot: {output_path.name}")
+            generated_pngs.append(output_path)
+
+    return generated_pngs
+
+
+if __name__ == "__main__":
+    # Example execution entrypoint
+    target_zip = Path("20260817_231059.zip")
+    output_directory = Path("rendered_zip_fields")
+
+    if target_zip.exists():
+        render_fields_from_zip(target_zip, output_directory)
+    else:
+        print(f"Please provide a valid zip archive path. ({target_zip} not found)")

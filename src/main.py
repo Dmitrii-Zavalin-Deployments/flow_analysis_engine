@@ -1,7 +1,7 @@
 """
 Main orchestration script for the flow analysis and visualization engine.
 Handles CLI arguments, coordinates input parsing, numerical processing,
-headless rendering, and output generation.
+headless rendering, in-memory ZIP field visualization, and output generation.
 """
 
 import argparse
@@ -12,6 +12,7 @@ from pathlib import Path
 from src.core.parser import parse_input_file
 from src.core.processor import process_flow_data
 from src.visualization.renderer import render_visualization
+from src.visualization.zip_field_renderer import render_fields_from_zip
 
 
 def main():
@@ -61,6 +62,20 @@ def main():
         render_visualization(raw_data, processed_results, output_dir=input_dir)
     except Exception as e:
         print(f"⚠️ Warning: Visualization rendering encountered an issue: {e}", file=sys.stderr)
+
+    # In-memory ZIP field rendering for simulation .npy results
+    zip_filename = (
+        processed_results.get("zip_filename") 
+        or raw_data.get("results", {}).get("zip_filename")
+    )
+    if zip_filename:
+        zip_path = input_dir / zip_filename
+        if zip_path.exists():
+            print(f"📦 Inspecting and rendering 3D fields from ZIP archive: {zip_filename}")
+            try:
+                render_fields_from_zip(zip_path, output_dir=input_dir)
+            except Exception as e:
+                print(f"⚠️ Warning: ZIP field rendering encountered an issue: {e}", file=sys.stderr)
 
     print(f"💾 Writing output results to: {output_path}")
     try:
