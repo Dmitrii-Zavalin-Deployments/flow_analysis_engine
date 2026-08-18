@@ -26,10 +26,9 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
 
 def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
     """
-    Generates 3D voxel mask visualization:
-    - Renders full domain reference wireframe (3x3x3 domain context)
-    - Fluid (1) & Wall (-1): Rendered as active, 3D translucent cubes
-    - Explicitly sets full grid axis limits (x_min..x_max, y_min..y_max, z_min..z_max)
+    Generates 3D voxel mask visualization with crisp black perimeter and cell edge lines:
+    - Domain wireframe and active 3D cubes use sharp black/dark edge lines.
+    - Fluid (1) & Wall (-1): Rendered as active, 3D translucent cubes.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -79,22 +78,22 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
 
-    # Layer 1: Background wireframe grid for ALL domain cells (0..nx, 0..ny, 0..nz)
+    # Layer 1: Background wireframe grid for ALL domain cells with distinct dark edges
     full_grid = np.ones((nx, ny, nz), dtype=bool)
     ax.voxels(
         X, Y, Z, full_grid,
-        facecolors=[0, 0, 0, 0.02],
-        edgecolors=(0.65, 0.65, 0.65, 0.35),
-        linewidth=0.4
+        facecolors=[0, 0, 0, 0.01],
+        edgecolors=(0.15, 0.15, 0.15, 0.45),  # Darker gray-black for background wireframe
+        linewidth=0.5
     )
 
-    # Layer 2: Active 3D translucent Fluid & Wall cubes
+    # Layer 2: Active 3D translucent Fluid & Wall cubes with sharp black boundary edges
     if np.any(voxels):
         ax.voxels(
             X, Y, Z, voxels,
             facecolors=colors,
-            edgecolors=(0.0, 0.2, 0.6, 0.8),
-            linewidth=0.6
+            edgecolors="k",  # Pure black edge lines for maximum model visibility
+            linewidth=0.8
         )
 
     # Force axis bounds to full domain dimensions
@@ -122,7 +121,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     # 2. Render Mesh Snapshot
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="3d")
-    ax.voxels(X, Y, Z, full_grid, facecolors=[0, 0, 0, 0], edgecolors="blue", linewidth=0.5)
+    ax.voxels(X, Y, Z, full_grid, facecolors=[0, 0, 0, 0], edgecolors="k", linewidth=0.6)
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
     ax.set_zlim(z_min, z_max)
@@ -142,7 +141,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     x = r * np.sin(phi_grid) * np.cos(theta_grid)
     y = r * np.sin(phi_grid) * np.sin(theta_grid)
     z = r * np.cos(phi_grid)
-    ax.plot_surface(x, y, z, color="skyblue", edgecolor="navy", alpha=0.8)
+    ax.plot_surface(x, y, z, color="skyblue", edgecolor="black", alpha=0.8)
     ax.set_title("STEP Geometry Snapshot", fontsize=12, fontweight="bold")
     ax.axis("off")
     step_path = output_dir / "step_snapshot.png"
