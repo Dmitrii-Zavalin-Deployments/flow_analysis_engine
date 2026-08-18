@@ -27,9 +27,9 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
 def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
     """
     Generates 3D voxel mask visualization matching grid dimensions and cell classification:
-    - Solid (0): Transparent Light Grey
-    - Fluid (1): Transparent Blue
-    - Wall/Border (-1): Transparent Dark Blue
+    - Solid (0): Ultra-light transparent grey (allows seeing inner fluid cells)
+    - Fluid (1): Vibrant blue
+    - Wall/Border (-1): Deep near-black dark blue
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -50,17 +50,19 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     voxels = np.ones((nx, ny, nz), dtype=bool)
     colors = np.empty((nx, ny, nz, 4), dtype=float)
 
-    # RGBA Color definitions
-    COLOR_SOLID = np.array([0.7, 0.7, 0.7, 0.4])       # Solid (0) -> Transparent Light Grey
-    COLOR_FLUID = np.array([0.12, 0.56, 1.0, 0.15])    # Fluid (1) -> Transparent Blue
-    COLOR_WALL  = np.array([0.0, 0.0, 0.55, 0.25])     # Wall/Border (-1) -> Transparent Dark Blue
+    # RGBA Color Definitions:
+    # Solid (0)  -> Ultra-light transparent grey (alpha=0.08)
+    # Fluid (1)  -> Electric blue (alpha=0.75)
+    # Wall (-1)   -> Near-black dark blue (alpha=0.85)
+    COLOR_SOLID = np.array([0.90, 0.90, 0.90, 0.08])
+    COLOR_FLUID = np.array([0.00, 0.45, 1.00, 0.75])
+    COLOR_WALL  = np.array([0.02, 0.02, 0.15, 0.85])
 
     total_cells = nx * ny * nz
     for idx in range(min(len(mask), total_cells)):
         i, j, k = get_coords_from_index(idx, nx, ny)
         val = mask[idx]
 
-        # PURE DATA-DRIVEN MAPPING (No spatial boundary overrides)
         if val == 0:
             colors[i, j, k] = COLOR_SOLID
         elif val == 1:
@@ -68,10 +70,10 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
         elif val == -1:
             colors[i, j, k] = COLOR_WALL
         else:
-            colors[i, j, k] = COLOR_FLUID  # Default fallback
+            colors[i, j, k] = COLOR_FLUID  # Fallback
 
     # 1. Render Voxel Mask Snapshot
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(9, 9))
     ax = fig.add_subplot(111, projection="3d")
 
     x_edges = np.linspace(x_min, x_max, nx + 1)
@@ -82,10 +84,10 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     ax.voxels(X, Y, Z, voxels, facecolors=colors, edgecolors="k", linewidth=0.3)
 
-    ax.set_title("3D Voxel Mask & Cell Classification (Solid:0, Fluid:1, Wall:-1)", fontsize=11, fontweight="bold")
-    ax.set_xlabel("X Coordinate")
-    ax.set_ylabel("Y Coordinate")
-    ax.set_zlabel("Z Coordinate")
+    ax.set_title("3D Voxel Mask & Cell Classification (Solid:0, Fluid:1, Wall:-1)", fontsize=11, fontweight="bold", pad=15)
+    ax.set_xlabel("X Coordinate", labelpad=10)
+    ax.set_ylabel("Y Coordinate", labelpad=10)
+    ax.set_zlabel("Z Coordinate", labelpad=12)
 
     legend_handles = [
         mpatches.Patch(color=COLOR_SOLID, label="Solid Obstacle (val=0)"),
@@ -95,7 +97,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     ax.legend(handles=legend_handles, loc="upper right")
 
     voxel_path = output_dir / "voxel_mask_verification.png"
-    plt.savefig(voxel_path, dpi=150, bbox_inches="tight")
+    plt.savefig(voxel_path, dpi=150, bbox_inches="tight", pad_inches=0.4)
     plt.close(fig)
     print(f"🖼 Generated 3D Voxel Verification: {voxel_path}")
 
