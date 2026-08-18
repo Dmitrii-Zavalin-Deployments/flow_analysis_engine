@@ -27,8 +27,9 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
 def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
     """
     Generates 3D voxel mask visualization:
-    - Fluid (1) & Wall (-1): Rendered as active, full 3D translucent cubes (all 6 faces visible).
-    - Solid (0): Set to False (omitted as solid blocks) to prevent internal face culling.
+    - Renders full domain reference wireframe (3x3x3 domain context)
+    - Fluid (1) & Wall (-1): Rendered as active, 3D translucent cubes
+    - Explicitly sets full grid axis limits (x_min..x_max, y_min..y_max, z_min..z_max)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -45,14 +46,14 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     mask = processed_results.get("mask", inputs.get("mask", [0] * (nx * ny * nz)))
 
-    # Initialize voxel matrices: Only fluid and wall cells are active voxels (True)
-    # so Matplotlib renders all 6 faces of their 3D cubes without culling.
+    # Voxel matrices for fluid / wall cells
     voxels = np.zeros((nx, ny, nz), dtype=bool)
     colors = np.empty((nx, ny, nz, 4), dtype=float)
 
-    # RGBA Color Definitions for full transparent 3D cubes:
-    COLOR_FLUID = np.array([0.00, 0.45, 1.00, 0.60])   # Vibrant semi-transparent blue
+    # Color Definitions:
+    COLOR_FLUID = np.array([0.12, 0.53, 1.00, 0.65])   # Vibrant transparent blue
     COLOR_WALL  = np.array([0.02, 0.02, 0.15, 0.85])   # Near-black dark blue
+    COLOR_SOLID_LEGEND = np.array([0.85, 0.85, 0.85, 0.20])
 
     total_cells = nx * ny * nz
     for idx in range(min(len(mask), total_cells)):
@@ -66,7 +67,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
             voxels[i, j, k] = True
             colors[i, j, k] = COLOR_WALL
         else:
-            voxels[i, j, k] = False  # Solid (0) cells are inactive, revealing inner fluid cubes
+            voxels[i, j, k] = False
 
     # 1. Render Voxel Mask Snapshot
     fig = plt.figure(figsize=(9, 9))
@@ -78,15 +79,37 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
 
     X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
 
-    ax.voxels(X, Y, Z, voxels, facecolors=colors, edgecolors="k", linewidth=0.4)
+    # Layer 1: Background wireframe grid for ALL domain cells (0..nx, 0..ny, 0..nz)
+    full_grid = np.ones((nx, ny, nz), dtype=bool)
+    ax.voxels(
+        X, Y, Z, full_grid,
+        facecolors=[0, 0, 0, 0.02],
+        edgecolors=(0.65, 0.65, 0.65, 0.35),
+        linewidth=0.4
+    )
 
-    ax.set_title("3D Voxel Mask & Cell Classification (Fluid Cubes & Walls)", fontsize=11, fontweight="bold", pad=15)
+    # Layer 2: Active 3D translucent Fluid & Wall cubes
+    if np.any(voxels):
+        ax.voxels(
+            X, Y, Z, voxels,
+            facecolors=colors,
+            edgecolors=(0.0, 0.2, 0.6, 0.8),
+            linewidth=0.6
+        )
+
+    # Force axis bounds to full domain dimensions
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_zlim(z_min, z_max)
+
+    ax.set_title("3D Voxel Mask & Cell Classification (Fluid Cubes & Domain Bounds)", fontsize=11, fontweight="bold", pad=15)
     ax.set_xlabel("X Coordinate", labelpad=10)
     ax.set_ylabel("Y Coordinate", labelpad=10)
     ax.set_zlabel("Z Coordinate", labelpad=12)
 
     legend_handles = [
-        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1) [Full 3D Cube]"),
+        mpatches.Patch(color=COLOR_SOLID_LEGEND, label="Solid Obstacle (val=0) [Wireframe]"),
+        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1) [3D Cube]"),
         mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1)")
     ]
     ax.legend(handles=legend_handles, loc="upper right")
@@ -99,7 +122,10 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     # 2. Render Mesh Snapshot
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="3d")
-    ax.voxels(X, Y, Z, np.ones((nx, ny, nz), dtype=bool), facecolors=[0, 0, 0, 0], edgecolors="blue", linewidth=0.5)
+    ax.voxels(X, Y, Z, full_grid, facecolors=[0, 0, 0, 0], edgecolors="blue", linewidth=0.5)
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_zlim(z_min, z_max)
     ax.set_title("Computational Mesh Grid", fontsize=12, fontweight="bold")
     mesh_path = output_dir / "mesh_snapshot.png"
     plt.savefig(mesh_path, dpi=150, bbox_inches="tight")
