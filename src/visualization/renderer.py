@@ -29,7 +29,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     Generates 3D voxel mask visualization matching grid dimensions and cell classification:
     - Solid (0): Transparent Light Grey
     - Fluid (1): Transparent Blue
-    - Wall/Border (-1 / Boundary): Transparent Dark Blue
+    - Wall/Border (-1): Transparent Dark Blue
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -58,16 +58,15 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     total_cells = nx * ny * nz
     for idx in range(min(len(mask), total_cells)):
         i, j, k = get_coords_from_index(idx, nx, ny)
-
-        is_boundary = (i == 0 or i == nx - 1 or j == 0 or j == ny - 1 or k == 0 or k == nz - 1)
         val = mask[idx]
 
-        if is_boundary or val == -1:
-            colors[i, j, k] = COLOR_WALL
-        elif val == 0:
+        # PURE DATA-DRIVEN MAPPING (No spatial boundary overrides)
+        if val == 0:
             colors[i, j, k] = COLOR_SOLID
         elif val == 1:
             colors[i, j, k] = COLOR_FLUID
+        elif val == -1:
+            colors[i, j, k] = COLOR_WALL
         else:
             colors[i, j, k] = COLOR_FLUID  # Default fallback
 
@@ -91,14 +90,14 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     legend_handles = [
         mpatches.Patch(color=COLOR_SOLID, label="Solid Obstacle (val=0)"),
         mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1)"),
-        mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1 / Boundary)")
+        mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1)")
     ]
     ax.legend(handles=legend_handles, loc="upper right")
 
     voxel_path = output_dir / "voxel_mask_verification.png"
     plt.savefig(voxel_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"🖼️ Generated 3D Voxel Verification: {voxel_path}")
+    print(f"🖼 Generated 3D Voxel Verification: {voxel_path}")
 
     # 2. Render Mesh Snapshot
     fig = plt.figure(figsize=(6, 6))
@@ -108,7 +107,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     mesh_path = output_dir / "mesh_snapshot.png"
     plt.savefig(mesh_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"🖼️ Generated Mesh Snapshot: {mesh_path}")
+    print(f"🖼 Generated Mesh Snapshot: {mesh_path}")
 
     # 3. Generate step_snapshot.png (CAD geometry view)
     fig = plt.figure(figsize=(6, 6))
