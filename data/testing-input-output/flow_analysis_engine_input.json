@@ -145,8 +145,8 @@
       ],
       "gravity_vector": [
         0.0,
-        0.0,
-        -9.81
+        -9.81,
+        0.0
       ]
     },
     "domain_configuration": {
@@ -165,6 +165,6 @@
   },
   "results": {
     "status": "SUCCESS",
-    "zip_filename": "20260819_143839.zip"
+    "zip_filename": "20260819_145453.zip"
   }
 }
