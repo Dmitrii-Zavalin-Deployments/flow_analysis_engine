@@ -30,22 +30,22 @@
     },
     "boundary_conditions": [
       {
-        "location": "x_min",
+        "location": "z_min",
         "type": "inflow",
         "values": {
-          "u": 1.0,
+          "u": 0.0,
           "v": 0.0,
-          "w": 0.0,
+          "w": 1.0,
           "p": 0.0
         }
       },
       {
-        "location": "x_max",
+        "location": "z_max",
         "type": "outflow",
         "values": {
-          "u": 1.0,
+          "u": 0.0,
           "v": 0.0,
-          "w": 0.0,
+          "w": 1.0,
           "p": 0.0
         }
       },
@@ -165,6 +165,6 @@
   },
   "results": {
     "status": "SUCCESS",
-    "zip_filename": "20260819_110230.zip"
+    "zip_filename": "20260819_113618.zip"
   }
 }
