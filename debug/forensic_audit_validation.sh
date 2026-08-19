@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ZIP_PATH="${1:-data/testing-input-output/20260819_124046.zip}"
+ZIP_PATH="${1:-data/testing-input-output/20260819_131114.zip}"
 
 echo "=================================================="
 echo "📦 Inspecting Simulation ZIP: $ZIP_PATH"
