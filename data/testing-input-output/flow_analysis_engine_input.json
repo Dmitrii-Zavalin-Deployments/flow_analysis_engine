@@ -51,10 +51,8 @@
       },
       {
         "location": "wall",
-        "type": "no-slip",
+        "type": "free-slip",
         "values": {
-          "u": 0.0,
-          "v": 0.0,
           "w": 0.0,
           "p": 0.0
         }
@@ -165,6 +163,6 @@
   },
   "results": {
     "status": "SUCCESS",
-    "zip_filename": "20260819_154831.zip"
+    "zip_filename": "20260819_222430.zip"
   }
 }
