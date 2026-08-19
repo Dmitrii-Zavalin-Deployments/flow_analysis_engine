@@ -139,9 +139,9 @@
     ],
     "external_forces": {
       "force_vector": [
-        0.0,
-        0.0,
-        0.0
+        10.0,
+        10.0,
+        10.0
       ],
       "gravity_vector": [
         -9.81,
@@ -165,6 +165,6 @@
   },
   "results": {
     "status": "SUCCESS",
-    "zip_filename": "20260819_153248.zip"
+    "zip_filename": "20260819_154831.zip"
   }
 }
