@@ -20,7 +20,7 @@ def test_main_missing_inputs_key_error(monkeypatch, tmp_path):
     # We construct an invalid input data structure lacking the required root 'inputs' section.
     # Under our strict non-default schema policy, this omission must trigger a controlled failure.
     input_file = tmp_path / "invalid_input.json"
-    input_file.write_text('{"config": {}, "not_inputs": {}}', encoding="utf-8")
+    input_file.write_text('{"config": {}, "results": {}, "not_inputs": {}}', encoding="utf-8")
 
     # We configure the command-line arguments to point the orchestrator to our temporary
     # isolated input folder and target output path.
@@ -79,6 +79,7 @@ def test_main_config_schema_validation_error(monkeypatch, tmp_path):
     input_file = tmp_path / "input.json"
     valid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
@@ -112,6 +113,7 @@ def test_main_process_flow_data_error(monkeypatch, tmp_path):
     input_file = tmp_path / "input.json"
     invalid_grid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 0, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [],
@@ -144,6 +146,7 @@ def test_main_visualization_rendering_warning(monkeypatch, tmp_path):
     input_file = tmp_path / "input.json"
     valid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
@@ -182,6 +185,7 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path):
     input_file = tmp_path / "input.json"
     valid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0},
             "mask": [1],
@@ -214,6 +218,7 @@ def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
     input_file = tmp_path / "test_input.json"
     valid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 2, "ny": 2, "nz": 2, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1, 1, 1, 1, 1, 1, 1, 1],
@@ -247,6 +252,7 @@ def test_main_output_write_error(monkeypatch, tmp_path):
     input_file = tmp_path / "input.json"
     valid_data = {
         "config": {},
+        "results": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
