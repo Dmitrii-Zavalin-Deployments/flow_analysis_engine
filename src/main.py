@@ -95,31 +95,37 @@ def main() -> None:
     except (ValueError, OSError, RuntimeError) as e:
         logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
-    # In-memory ZIP field rendering for simulation .npy results (Strict Schema Policy Enforced)
+    # In-memory ZIP field rendering for simulation .npy results
     try:
-        inputs_dict = raw_data.get("inputs")
-        if inputs_dict is None:
-            raise KeyError("Required 'inputs' section is missing from input data.")
+        inputs_dict = raw_data.get("inputs", raw_data)
 
         # Prioritize dynamic input grid bounds over static config.json template values
         grid_bounds = None
-        if "grid" in inputs_dict:
+        if isinstance(inputs_dict, dict) and "grid" in inputs_dict:
             g = inputs_dict["grid"]
-            grid_bounds = (
-                float(g["x_min"]), float(g["x_max"]),
-                float(g["y_min"]), float(g["y_max"]),
-                float(g["z_min"]), float(g["z_max"])
-            )
-            config_data["grid_bounds"] = list(grid_bounds)
-        elif "grid_bounds" in config_data:
+            try:
+                grid_bounds = (
+                    float(g["x_min"]), float(g["x_max"]),
+                    float(g["y_min"]), float(g["y_max"]),
+                    float(g["z_min"]), float(g["z_max"])
+                )
+                config_data["grid_bounds"] = list(grid_bounds)
+            except (KeyError, ValueError, TypeError) as e:
+                logger.warning("Failed to parse grid bounds from inputs.grid: %s", e)
+
+        if grid_bounds is None and "grid_bounds" in config_data:
             gb = config_data["grid_bounds"]
             grid_bounds = tuple(float(v) for v in gb)
-        else:
+
+        if grid_bounds is None:
             raise KeyError("No valid 'grid' in inputs or 'grid_bounds' in config_data found.")
 
-        # Retrieve zip_filename strictly from the results block as per schema
-        results_dict = raw_data.get("results", {})
+        # Check 'results' first, then fallback to 'inputs' for zip_filename location
+        results_dict = raw_data.get("results", {}) if isinstance(raw_data, dict) else {}
         zip_filename = results_dict.get("zip_filename")
+        if not zip_filename and isinstance(inputs_dict, dict):
+            zip_filename = inputs_dict.get("zip_filename")
+
         if zip_filename:
             zip_path = input_dir / zip_filename
             if zip_path.exists():
@@ -132,9 +138,9 @@ def main() -> None:
         logger.error("Error during ZIP field rendering or strict grid boundary resolution: %s", e)
         sys.exit(1)
 
-    # Construct merged output structure: {"inputs": ..., "results": ...}
+    # Construct merged output structure without double-nesting inputs
     final_output = {
-        "inputs": raw_data,
+        "inputs": raw_data.get("inputs", raw_data),
         "results": processed_results
     }
 
