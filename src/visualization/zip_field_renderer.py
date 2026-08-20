@@ -68,9 +68,11 @@ def render_fields_from_zip(
     if grid_bounds is None:
         logger.info("Loading grid_bounds from config.json under config-driven policy.")
         repo_root = Path(__file__).resolve().parent.parent.parent
-        config_path = repo_root / "config" / "config.json"
+        
+        # Prioritize output_dir / "config.json", then fall back to repository root config
+        config_path = output_dir / "config.json"
         if not config_path.exists():
-            config_path = output_dir / "config.json"
+            config_path = repo_root / "config" / "config.json"
 
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file for grid_bounds not found at: {config_path}")
