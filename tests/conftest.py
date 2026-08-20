@@ -63,12 +63,16 @@ def pipeline_test_environment(tmp_path):
     input_schema = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
-        "required": ["config", "inputs"],
+        "required": ["config", "inputs", "results"],
         "properties": {
             "config": {"type": "object"},
             "inputs": {
                 "type": "object",
-                "required": ["grid", "mask", "physical_constraints", "zip_filename"]
+                "required": ["grid", "mask", "physical_constraints"]
+            },
+            "results": {
+                "type": "object",
+                "required": ["zip_filename"]
             }
         }
     }
@@ -100,7 +104,7 @@ def pipeline_test_environment(tmp_path):
         np.save(p_buffer, p_field)
         zf.writestr("p_step_000005.npy", p_buffer.getvalue())
 
-    # We formulate and write the input payload JSON containing config, grid parameters, fluid masks, and constraints.
+    # We formulate and write the input payload JSON containing config, grid parameters, fluid masks, and results block.
     input_payload = {
         "config": {
             "mode": "production",
@@ -119,7 +123,9 @@ def pipeline_test_environment(tmp_path):
                 "max_velocity": 10.0,
                 "min_pressure": 0.0,
                 "max_pressure": 200000.0
-            },
+            }
+        },
+        "results": {
             "zip_filename": "simulation_results.zip"
         }
     }

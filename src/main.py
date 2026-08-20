@@ -95,7 +95,7 @@ def main() -> None:
     except (ValueError, OSError, RuntimeError) as e:
         logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
-    # In-memory ZIP field rendering for simulation .npy results (Strict Non-Default Policy Enforced)
+    # In-memory ZIP field rendering for simulation .npy results (Strict Schema Policy Enforced)
     try:
         inputs_dict = raw_data.get("inputs")
         if inputs_dict is None:
@@ -113,7 +113,9 @@ def main() -> None:
                 float(g["z_min"]), float(g["z_max"])
             )
 
-        zip_filename = inputs_dict.get("zip_filename")
+        # Retrieve zip_filename strictly from the results block as per schema
+        results_dict = raw_data.get("results", {})
+        zip_filename = results_dict.get("zip_filename")
         if zip_filename:
             zip_path = input_dir / zip_filename
             if zip_path.exists():
