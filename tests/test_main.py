@@ -9,9 +9,9 @@ resolution, and output file write error handling in the main orchestration modul
 
 import sys
 import zipfile
-
+from unittest.mock import patch
+from pathlib import Path
 import pytest
-
 from src.main import main
 
 
@@ -135,9 +135,9 @@ def test_main_process_flow_data_error(monkeypatch, tmp_path):
     assert exc_info.value.code == 1
 
 
-def test_main_visualization_rendering_warning(monkeypatch, tmp_path, mocker):
-    # We set up valid input data and mock render_visualization to raise a ValueError, 
-    # validating that rendering anomalies are gracefully handled as warnings without aborting execution.
+def test_main_visualization_rendering_warning(monkeypatch, tmp_path):
+    # We set up valid input data and patch render_visualization using standard unittest.mock
+    # to raise a ValueError, validating that rendering anomalies are handled gracefully as warnings.
     input_file = tmp_path / "input.json"
     valid_data = {
         "inputs": {
@@ -160,15 +160,14 @@ def test_main_visualization_rendering_warning(monkeypatch, tmp_path, mocker):
     )
 
     # We patch the renderer to simulate a non-fatal visualization exception.
-    mocker.patch("src.main.render_visualization", side_effect=ValueError("Rendering engine warning"))
+    with patch("src.main.render_visualization", side_effect=ValueError("Rendering engine warning")):
+        main()
 
-    # Execution should proceed smoothly past the rendering step and successfully generate output.
-    main()
     output_path = tmp_path / "output.json"
     assert output_path.exists()
 
 
-def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path, mocker):
+def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path):
     # We construct a valid simulation ZIP archive and configure input parameters lacking explicit 
     # config.json grid_bounds, forcing the orchestrator to extract spatial limits from inputs['grid'].
     zip_name = "simulation_results.zip"
@@ -198,11 +197,10 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path, mo
         ]
     )
 
-    # We mock render_fields_from_zip to verify that the fallback grid bounds extraction succeeds.
-    mock_render_fields = mocker.patch("src.main.render_fields_from_zip")
-
-    main()
-    mock_render_fields.assert_called_once()
+    # We patch render_fields_from_zip to verify that fallback grid bounds extraction succeeds.
+    with patch("src.main.render_fields_from_zip") as mock_render_fields:
+        main()
+        mock_render_fields.assert_called_once()
 
 
 def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
@@ -231,15 +229,14 @@ def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
     )
 
     # When the zip archive path does not exist, the orchestrator logs a warning branch.
-    # Depending on configuration execution, we handle any resulting system exit or completion.
     try:
         main()
     except SystemExit as e:
         assert e.code == 1
 
 
-def test_main_output_write_error(monkeypatch, tmp_path, mocker):
-    # We set up valid input data and mock the built-in open function to raise an OSError 
+def test_main_output_write_error(monkeypatch, tmp_path):
+    # We set up valid input data and patch built-in open to raise an OSError 
     # during final JSON results serialization to test output write error handling.
     input_file = tmp_path / "input.json"
     valid_data = {
@@ -262,11 +259,9 @@ def test_main_output_write_error(monkeypatch, tmp_path, mocker):
         ]
     )
 
-    # We mock file writing to simulate a disk I/O failure.
-    mocker.patch("builtins.open", side_effect=OSError("Disk write permission denied"))
-
-    # The orchestrator catches the file write exception, logs the error, and exits with code 1.
-    with pytest.raises(SystemExit) as exc_info:
-        main()
+    # We simulate a disk I/O failure during output file writing.
+    with patch("builtins.open", side_effect=OSError("Disk write permission denied")):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
     assert exc_info.value.code == 1
