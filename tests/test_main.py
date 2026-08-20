@@ -260,9 +260,8 @@ def test_main_output_write_error(monkeypatch, tmp_path):
         ]
     )
 
-    # We simulate a disk I/O failure during output file writing.
-    with patch("builtins.open", side_effect=OSError("Disk write permission denied")):
-        with pytest.raises(SystemExit) as exc_info:
-            main()
+    # We simulate a disk I/O failure during output file writing using a single combined context.
+    with patch("builtins.open", side_effect=OSError("Disk write permission denied")), pytest.raises(SystemExit) as exc_info:
+        main()
 
     assert exc_info.value.code == 1
