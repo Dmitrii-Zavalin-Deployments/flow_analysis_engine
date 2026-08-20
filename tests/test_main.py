@@ -10,8 +10,9 @@ resolution, and output file write error handling in the main orchestration modul
 import sys
 import zipfile
 from unittest.mock import patch
-from pathlib import Path
+
 import pytest
+
 from src.main import main
 
 
