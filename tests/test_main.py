@@ -10,6 +10,8 @@ leveraging the shared zero-mock pipeline test environment fixture.
 
 import json
 import sys
+import zipfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -227,6 +229,7 @@ def test_main_output_write_error(monkeypatch, pipeline_test_environment):
         main()
 
     assert exc_info.value.code == 1
+
 
 def test_main_missing_inputs_key_direct(monkeypatch, pipeline_test_environment):
     # When input data successfully passes initial parsing but programmatically 
