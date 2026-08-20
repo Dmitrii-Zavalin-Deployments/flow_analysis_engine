@@ -2,36 +2,318 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FlowAnalysisEngineInput",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
-    "grid": {
+    "inputs": {
       "type": "object",
+      "description": "Deterministic Navier-Stokes solver input used for this run. Echoed exactly as received.",
+      "additionalProperties": false,
+      "required": [
+        "grid",
+        "fluid_properties",
+        "initial_conditions",
+        "simulation_parameters",
+        "boundary_conditions",
+        "mask",
+        "external_forces",
+        "domain_configuration",
+        "physical_constraints"
+      ],
       "properties": {
-        "nx": {"type": "integer", "minimum": 1},
-        "ny": {"type": "integer", "minimum": 1},
-        "nz": {"type": "integer", "minimum": 1},
-        "x_min": {"type": "number"},
-        "x_max": {"type": "number"},
-        "y_min": {"type": "number"},
-        "y_max": {"type": "number"},
-        "z_min": {"type": "number"},
-        "z_max": {"type": "number"}
-      },
-      "required": ["nx", "ny", "nz"]
+        "physical_constraints": {
+          "type": "object",
+          "required": [
+            "min_velocity",
+            "max_velocity",
+            "min_pressure",
+            "max_pressure"
+          ],
+          "properties": {
+            "min_velocity": {
+              "type": "number",
+              "description": "Lower bound for any velocity component (u, v, w). Often 0 or negative for turbulence."
+            },
+            "max_velocity": {
+              "type": "number",
+              "description": "Upper bound for any velocity component. Triggers recovery if exceeded."
+            },
+            "min_pressure": {
+              "type": "number",
+              "description": "Lower bound for pressure. Prevents non-physical vacuum/sink divergence."
+            },
+            "max_pressure": {
+              "type": "number",
+              "description": "Upper bound for pressure. Prevents numerical explosions."
+            }
+          }
+        },
+        "domain_configuration": {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "INTERNAL",
+                "EXTERNAL"
+              ],
+              "description": "INTERNAL: Pressure-driven pipe flow. EXTERNAL: Far-field aerodynamics."
+            },
+            "reference_velocity": {
+              "type": "array",
+              "description": "Optional reference velocity of the EXTERNAL flow",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "grid": {
+          "type": "object",
+          "required": [
+            "x_min",
+            "x_max",
+            "y_min",
+            "y_max",
+            "z_min",
+            "z_max",
+            "nx",
+            "ny",
+            "nz"
+          ],
+          "properties": {
+            "x_min": {
+              "type": "number",
+              "description": "Physical coordinate of the domain start in X."
+            },
+            "x_max": {
+              "type": "number",
+              "description": "Physical coordinate of the domain end in X."
+            },
+            "y_min": {
+              "type": "number",
+              "description": "Physical coordinate of the domain start in Y."
+            },
+            "y_max": {
+              "type": "number",
+              "description": "Physical coordinate of the domain end in Y."
+            },
+            "z_min": {
+              "type": "number",
+              "description": "Physical coordinate of the domain start in Z."
+            },
+            "z_max": {
+              "type": "number",
+              "description": "Physical coordinate of the domain end in Z."
+            },
+            "nx": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of discrete computational cells along the X-axis."
+            },
+            "ny": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of discrete computational cells along the Y-axis."
+            },
+            "nz": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of discrete computational cells along the Z-axis."
+            }
+          }
+        },
+        "fluid_properties": {
+          "type": "object",
+          "required": [
+            "density",
+            "viscosity"
+          ],
+          "properties": {
+            "density": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "viscosity": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "initial_conditions": {
+          "type": "object",
+          "required": [
+            "velocity",
+            "pressure"
+          ],
+          "properties": {
+            "velocity": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            },
+            "pressure": {
+              "type": "number"
+            }
+          }
+        },
+        "simulation_parameters": {
+          "type": "object",
+          "required": [
+            "time_step",
+            "total_time",
+            "output_interval"
+          ],
+          "properties": {
+            "time_step": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "total_time": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "output_interval": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "boundary_conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "location",
+              "type",
+              "values"
+            ],
+            "properties": {
+              "location": {
+                "enum": [
+                  "x_min",
+                  "x_max",
+                  "y_min",
+                  "y_max",
+                  "z_min",
+                  "z_max",
+                  "wall"
+                ]
+              },
+              "type": {
+                "enum": [
+                  "no-slip",
+                  "free-slip",
+                  "inflow",
+                  "outflow",
+                  "pressure"
+                ]
+              },
+              "values": {
+                "type": "object",
+                "properties": {
+                  "u": {
+                    "type": "number"
+                  },
+                  "v": {
+                    "type": "number"
+                  },
+                  "w": {
+                    "type": "number"
+                  },
+                  "p": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false,
+                "minProperties": 1
+              }
+            }
+          }
+        },
+        "mask": {
+          "type": "array",
+          "description": "Canonical flattening: i + nx*(j + ny*k). Must match grid.nx*grid.ny*grid.nz length.",
+          "items": {
+            "type": "integer",
+            "enum": [
+              -1,
+              0,
+              1
+            ]
+          }
+        },
+        "external_forces": {
+          "type": "object",
+          "required": [
+            "force_vector"
+          ],
+          "properties": {
+            "force_vector": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
     },
-    "mask": {
-      "type": "array",
-      "items": {"type": "integer"}
-    },
-    "zip_filename": {"type": "string"},
-    "physical_constraints": {
+    "config": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_poisson_iterations",
+        "poisson_tolerance"
+      ],
       "properties": {
-        "min_velocity": {"type": "number"},
-        "max_velocity": {"type": "number"},
-        "min_pressure": {"type": "number"},
-        "max_pressure": {"type": "number"}
+        "max_poisson_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of iterations allowed for the Poisson pressure solver convergence."
+        },
+        "poisson_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Convergence residual tolerance threshold for the Poisson pressure solver."
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "zip_filename"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "SUCCESS",
+            "FAILURE"
+          ],
+          "description": "Execution status of the Navier-Stokes simulation run."
+        },
+        "zip_filename": {
+          "type": "string",
+          "description": "Filename of the generated output ZIP archive containing 1D field snapshots (u, v, w, p), or 'NOT_APPLICABLE' if execution failed."
+        }
       }
     }
   },
-  "required": ["grid"]
+  "required": [
+    "inputs",
+    "config",
+    "results"
+  ]
 }
