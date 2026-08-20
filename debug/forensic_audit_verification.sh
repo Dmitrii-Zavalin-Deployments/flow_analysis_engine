@@ -1,40 +1,54 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Forensic Audit & Automated Repair Script for Flow Analysis Engine
-# Target Issue: NumPy loading error due to pickled data objects (allow_pickle=False)
+# Forensic Audit Script for CI/CD Pipeline Failure Diagnostics
+# Target: flow_analysis_engine (NumPy allow_pickle=False error on np.load)
+# File: src/debug/forensic_audit.sh
 # ==============================================================================
 
 set -euo pipefail
 
-echo "=============================================================================="
-echo "1. DIAGNOSTICS: Locating numpy.load() occurrences across the codebase"
-echo "=============================================================================="
-grep -rn "np.load" src/ || echo "No direct np.load found, searching for load variants..."
-grep -rn "load(" src/core/ || true
+echo "=================================================="
+echo "          BEGINNING FORENSIC AUDIT RUN            "
+echo "=================================================="
 
-echo ""
-echo "=============================================================================="
-echo "2. SMOKING-GUN SOURCE AUDIT: Line-numbered view of processor.py"
-echo "=============================================================================="
-if [ -f "src/core/processor.py" ]; then
-    cat -n src/core/processor.py
-else
-    echo "Warning: src/core/processor.py not found in current directory."
+# 1. Environment & Repository Diagnostics
+echo "[DIAGNOSTIC] Checking repository status and Python environment..."
+git status -s || true
+git log -1 --oneline || true
+python3 --version || true
+python3 -c "import numpy; print('NumPy version:', numpy.__version__)" || true
+python3 -m pytest --version || true
+
+# 2. Diagnostics: Codebase Inspection for np.load occurrences
+echo "[DIAGNOSTIC] Auditing codebase for np.load calls..."
+grep -rn "np.load" src/ || true
+
+# 3. Smoking-Gun Source Audits (cat -n)
+echo "[SMOKING-GUN AUDIT] Line-numbered inspection of src/core/spatial_probe.py:"
+if [ -f "src/core/spatial_probe.py" ]; then
+    cat -n src/core/spatial_probe.py
 fi
 
-echo ""
-echo "=============================================================================="
-echo "3. ENVIRONMENT & TEST RUNNER CHECK"
-echo "=============================================================================="
-python3 -c "import sys, numpy; print('Python:', sys.version); print('NumPy version:', numpy.__version__)"
-pytest --version || echo "pytest not found in current PATH environment."
+echo "[SMOKING-GUN AUDIT] Line-numbered inspection of src/core/zip_inspector.py:"
+if [ -f "src/core/zip_inspector.py" ]; then
+    cat -n src/core/zip_inspector.py
+fi
 
-echo ""
-echo "=============================================================================="
-echo "4. AUTOMATED REPAIRS (sed Injections - Uncomment to apply)"
-echo "=============================================================================="
-# Fix numpy load in processor.py by enabling allow_pickle=True for trusted array files
-# sed -i 's/np.load(/np.load(..., allow_pickle=True)/g' src/core/processor.py
-# sed -i 's/np.load(\([^)]*\))/np.load(\1, allow_pickle=True)/g' src/core/processor.py
+echo "[SMOKING-GUN AUDIT] Line-numbered inspection of src/visualization/zip_field_renderer.py:"
+if [ -f "src/visualization/zip_field_renderer.py" ]; then
+    cat -n src/visualization/zip_field_renderer.py
+fi
 
-echo "Forensic audit script execution completed."
+# 4. Targeted Pytest Re-run with Verbose Logging & Full Traceback
+echo "[DIAGNOSTIC] Re-running failing integration test with detailed tracebacks..."
+python3 -m pytest tests/test_integration_flow.py -k "test_full_pipeline_integration_positive_path" --tb=long -vv -s || true
+
+# 5. Automated Repair Injection Templates (Commented out via # sed)
+echo "[REPAIR TEMPLATES] Suggested automated repair injections for allow_pickle=True:"
+# sed -i 's/np.load(io.BytesIO(f.read()))/np.load(io.BytesIO(f.read()), allow_pickle=True)/g' src/core/spatial_probe.py
+# sed -i 's/np.load(io.BytesIO(f.read()))/np.load(io.BytesIO(f.read()), allow_pickle=True)/g' src/core/zip_inspector.py
+# sed -i 's/np.load(io.BytesIO(npy_stream.read()))/np.load(io.BytesIO(npy_stream.read()), allow_pickle=True)/g' src/visualization/zip_field_renderer.py
+
+echo "=================================================="
+echo "            FORENSIC AUDIT COMPLETE               "
+echo "=================================================="
