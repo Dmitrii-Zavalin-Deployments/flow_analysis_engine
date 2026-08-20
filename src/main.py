@@ -6,6 +6,7 @@ in-memory ZIP field visualization, and merged output generation.
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -13,6 +14,9 @@ from src.core.parser import parse_input_file
 from src.core.processor import process_flow_data
 from src.visualization.renderer import render_visualization
 from src.visualization.zip_field_renderer import render_fields_from_zip
+
+# Configure structured module logger
+logger = logging.getLogger("flow_engine.main")
 
 
 def main():
@@ -40,28 +44,31 @@ def main():
     output_path = input_dir / args.output_file_name
 
     if not input_path.exists():
-        print(f"❌ Error: Input file not found at {input_path}", file=sys.stderr)
+        logger.error("Input file not found at target path.")
         sys.exit(1)
 
-    print(f"🚀 Loading and validating input data from: {input_path}")
+    logger.info("Initializing input parsing and schema validation module.")
     try:
         raw_data = parse_input_file(input_path)
+        logger.info("Successfully parsed and validated input data.")
     except Exception as e:
-        print(f"❌ Error validating input file against schema: {e}", file=sys.stderr)
+        logger.error("Error validating input file against schema: %s", e)
         sys.exit(1)
 
-    print("⚙ Running flow analysis processor and ZIP inspection...")
+    logger.info("Initializing flow analysis processor and ZIP inspection module.")
     try:
         processed_results = process_flow_data(raw_data, input_dir=input_dir)
+        logger.info("Successfully executed flow processing and spatial probing.")
     except Exception as e:
-        print(f"❌ Error during flow processing: {e}", file=sys.stderr)
+        logger.error("Error during flow processing: %s", e)
         sys.exit(1)
 
-    print("🎨 Executing headless rendering and visualization pipeline...")
+    logger.info("Initializing headless rendering and visualization pipeline.")
     try:
         render_visualization(raw_data, processed_results, output_dir=input_dir)
+        logger.info("Voxel visualization rendered successfully.")
     except Exception as e:
-        print(f"⚠ Warning: Voxel visualization rendering encountered an issue: {e}", file=sys.stderr)
+        logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
     # In-memory ZIP field rendering for simulation .npy results
     zip_filename = (
@@ -71,11 +78,14 @@ def main():
     if zip_filename:
         zip_path = input_dir / zip_filename
         if zip_path.exists():
-            print(f"📦 Inspecting and rendering 3D field colormaps from ZIP archive: {zip_filename}")
+            logger.info("Initializing in-memory ZIP field renderer for archive.")
             try:
                 render_fields_from_zip(zip_path, output_dir=input_dir)
+                logger.info("ZIP field rendering completed successfully.")
             except Exception as e:
-                print(f"⚠ Warning: ZIP field rendering encountered an issue: {e}", file=sys.stderr)
+                logger.warning("ZIP field rendering encountered an issue: %s", e)
+        else:
+            logger.warning("Configured zip archive path does not exist.")
 
     # Construct merged output structure: {"inputs": ..., "results": ...}
     final_output = {
@@ -83,16 +93,17 @@ def main():
         "results": processed_results
     }
 
-    print(f"💾 Writing merged output results to: {output_path}")
+    logger.info("Writing merged output results to target destination.")
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(final_output, f, indent=2)
+        logger.info("Successfully wrote final output file.")
     except Exception as e:
-        print(f"❌ Error writing output file: {e}", file=sys.stderr)
+        logger.error("Error writing output file: %s", e)
         sys.exit(1)
 
-    print("✅ Pipeline execution completed successfully.")
+    logger.info("Pipeline execution completed successfully.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
