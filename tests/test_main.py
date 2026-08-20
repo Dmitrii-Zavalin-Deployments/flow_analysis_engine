@@ -3,14 +3,14 @@ Literate Test Codex: Main Orchestration Script Validation
 ========================================================
 This test suite provides comprehensive narratives verifying CLI argument parsing,
 schema validation error handling, process execution failures, visualization warnings,
-missing inputs key protection, ZIP field rendering error pathways, and output file 
-write error handling in the main orchestration module.
+missing inputs key protection, ZIP field rendering error pathways, config fallback 
+resolution, and output file write error handling in the main orchestration module.
 """
 
 import sys
-
+import zipfile
+from pathlib import Path
 import pytest
-
 from src.main import main
 
 
@@ -42,6 +42,168 @@ def test_main_missing_inputs_key_error(monkeypatch, tmp_path):
     assert exc_info.value.code == 1
 
 
+def test_main_input_file_not_found(monkeypatch, tmp_path):
+    # We configure command-line arguments pointing to a non-existent input file path 
+    # within our temporary directory environment.
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "non_existent_input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # When the target input file is missing, the orchestrator logs an error message
+    # and terminates execution with exit code 1.
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    # We assert that the exit status code correctly indicates a failure.
+    assert exc_info.value.code == 1
+
+
+def test_main_config_schema_validation_error(monkeypatch, tmp_path):
+    # We create a malformed configuration file inside a config subdirectory to trigger 
+    # configuration schema parsing and validation exception handling.
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config_file = config_dir / "config.json"
+    config_file.write_text("{malformed_config_json", encoding="utf-8")
+
+    # We provide a valid input JSON file so the primary input parsing succeeds.
+    input_file = tmp_path / "input.json"
+    valid_data = {
+        "inputs": {
+            "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
+            "mask": [1],
+            "physical_constraints": {}
+        }
+    }
+    input_file.write_text(str(valid_data).replace("'", '"'), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # When config validation encounters malformed JSON or schema violations, it catches 
+    # the exception and exits with status code 1.
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_process_flow_data_error(monkeypatch, tmp_path):
+    # We provide an input file containing invalid grid specifications (e.g., zero dimension nx = 0)
+    # which causes process_flow_data to raise a ValueError during numerical preprocessing.
+    input_file = tmp_path / "input.json"
+    invalid_grid_data = {
+        "inputs": {
+            "grid": {"nx": 0, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
+            "mask": [],
+            "physical_constraints": {}
+        }
+    }
+    input_file.write_text(str(invalid_grid_data).replace("'", '"'), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # The orchestrator catches processing exceptions, logs the error, and terminates via sys.exit(1).
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_visualization_rendering_warning(monkeypatch, tmp_path, mocker):
+    # We set up valid input data and mock render_visualization to raise a ValueError, 
+    # validating that rendering anomalies are gracefully handled as warnings without aborting execution.
+    input_file = tmp_path / "input.json"
+    valid_data = {
+        "inputs": {
+            "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
+            "mask": [1],
+            "physical_constraints": {}
+        }
+    }
+    input_file.write_text(str(valid_data).replace("'", '"'), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # We patch the renderer to simulate a non-fatal visualization exception.
+    mocker.patch("src.main.render_visualization", side_effect=ValueError("Rendering engine warning"))
+
+    # Execution should proceed smoothly past the rendering step and successfully generate output.
+    main()
+    output_path = tmp_path / "output.json"
+    assert output_path.exists()
+
+
+def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path, mocker):
+    # We construct a valid simulation ZIP archive and configure input parameters lacking explicit 
+    # config.json grid_bounds, forcing the orchestrator to extract spatial limits from inputs['grid'].
+    zip_name = "simulation_results.zip"
+    zip_path = tmp_path / zip_name
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("field_data.npy", b"fake_array_bytes")
+
+    input_file = tmp_path / "input.json"
+    valid_data = {
+        "inputs": {
+            "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0},
+            "mask": [1],
+            "physical_constraints": {"min_value": 0.0, "max_value": 10.0},
+            "zip_filename": zip_name
+        }
+    }
+    input_file.write_text(str(valid_data).replace("'", '"'), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # We mock render_fields_from_zip to verify that the fallback grid bounds extraction succeeds.
+    mock_render_fields = mocker.patch("src.main.render_fields_from_zip")
+
+    main()
+    mock_render_fields.assert_called_once()
+
+
 def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
     # We establish a valid input configuration that references a non-existent ZIP archive file
     # to evaluate the pipeline's branching logic when handling missing optional simulation data.
@@ -56,7 +218,6 @@ def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
     }
     input_file.write_text(str(valid_data).replace("'", '"'), encoding="utf-8")
 
-    # We patch the system argument vector to simulate CLI execution with our test files.
     monkeypatch.setattr(
         sys,
         "argv",
@@ -68,10 +229,43 @@ def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
         ]
     )
 
-    # We execute the pipeline and gracefully handle whether the branch resolves via a 
-    # controlled system exit or warning path.
+    # When the zip archive path does not exist, the orchestrator logs a warning branch.
+    # Depending on configuration execution, we handle any resulting system exit or completion.
     try:
         main()
     except SystemExit as e:
-        # If a system exit is triggered, we assert that the exit code is 1.
         assert e.code == 1
+
+
+def test_main_output_write_error(monkeypatch, tmp_path, mocker):
+    # We set up valid input data and mock the built-in open function to raise an OSError 
+    # during final JSON results serialization to test output write error handling.
+    input_file = tmp_path / "input.json"
+    valid_data = {
+        "inputs": {
+            "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
+            "mask": [1],
+            "physical_constraints": {}
+        }
+    }
+    input_file.write_text(str(valid_data).replace("'", '"'), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(tmp_path),
+            "--input_file_name", "input.json",
+            "--output_file_name", "output.json"
+        ]
+    )
+
+    # We mock file writing to simulate a disk I/O failure.
+    mocker.patch("builtins.open", side_effect=OSError("Disk write permission denied"))
+
+    # The orchestrator catches the file write exception, logs the error, and exits with code 1.
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
