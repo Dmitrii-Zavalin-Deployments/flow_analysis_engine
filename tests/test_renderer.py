@@ -6,11 +6,9 @@ pathways, missing inputs and grid parameters, non-positive grid dimensions, miss
 mask data, mask length validation, and spatial index coordinate mapping.
 """
 
-from pathlib import Path
 import pytest
 
-from src.visualization.renderer import render_visualization, get_coords_from_index
-
+from src.visualization.renderer import get_coords_from_index, render_visualization
 
 # ==============================================================================
 # Scenario 1: Missing 'inputs' Section in Raw Data

@@ -6,15 +6,13 @@ module, including configuration loading, coordinate interval slicing, in-memory
 NumPy array dimension transformations, and strict error resilience under the no-default policy.
 """
 
-import io
 import json
 import zipfile
-from pathlib import Path
+
 import numpy as np
 import pytest
 
-from src.core.spatial_probe import load_spatial_config, analyze_spatial_intervals
-
+from src.core.spatial_probe import analyze_spatial_intervals, load_spatial_config
 
 # ==============================================================================
 # Scenario 1: Spatial Configuration Loading - Missing File Handling

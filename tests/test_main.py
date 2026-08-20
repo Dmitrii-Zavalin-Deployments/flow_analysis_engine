@@ -10,7 +10,7 @@ write error handling in the main orchestration module.
 import json
 import sys
 import zipfile
-from pathlib import Path
+
 import numpy as np
 import pytest
 

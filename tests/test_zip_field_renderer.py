@@ -10,12 +10,14 @@ and non-3D array dimension inference.
 import io
 import json
 import zipfile
-from pathlib import Path
+
 import numpy as np
 import pytest
 
-from src.visualization.zip_field_renderer import process_field_data, render_fields_from_zip
-
+from src.visualization.zip_field_renderer import (
+    process_field_data,
+    render_fields_from_zip,
+)
 
 # ==============================================================================
 # Scenario 1: Normalizing 1D Field Arrays

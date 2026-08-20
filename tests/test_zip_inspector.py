@@ -6,14 +6,12 @@ archive inspection, Navier-Stokes global field statistics tracking, targeted
 step snapshot extraction, and Bernoulli boundary constraint verification.
 """
 
-import io
 import zipfile
-from pathlib import Path
+
 import numpy as np
 import pytest
 
 from src.core.zip_inspector import inspect_simulation_zip
-
 
 # ==============================================================================
 # Scenario 1: Handling Missing Simulation ZIP Archive
