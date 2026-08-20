@@ -8,6 +8,7 @@ Description:
     configurations, simulation ZIP archives, and input payloads.
 """
 
+import io
 import json
 import zipfile
 
@@ -85,14 +86,19 @@ def pipeline_test_environment(tmp_path):
     }
     (config_dir / "config.json").write_text(json.dumps(config_data))
 
-    # We generate a real simulation ZIP archive containing NumPy binary arrays (.npy) for velocity and pressure fields.
+    # We generate a real simulation ZIP archive containing valid NumPy binary arrays (.npy) with proper headers.
     zip_path = input_dir / "simulation_results.zip"
     u_field = np.ones((2, 2, 2), dtype=float) * 2.5
     p_field = np.full((2, 2, 2), 101325.0, dtype=float)
 
     with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.writestr("u_step_000005.npy", u_field.tobytes())
-        zf.writestr("p_step_000005.npy", p_field.tobytes())
+        u_buffer = io.BytesIO()
+        np.save(u_buffer, u_field)
+        zf.writestr("u_step_000005.npy", u_buffer.getvalue())
+
+        p_buffer = io.BytesIO()
+        np.save(p_buffer, p_field)
+        zf.writestr("p_step_000005.npy", p_buffer.getvalue())
 
     # We formulate and write the input payload JSON containing config, grid parameters, fluid masks, and constraints.
     input_payload = {
