@@ -52,7 +52,8 @@ def render_fields_from_zip(
     zip_path: Path | str,
     output_dir: Path | str,
     grid_bounds: tuple[float, float, float, float, float, float] | None = None,
-    colormap_name: str = "viridis"
+    colormap_name: str = "viridis",
+    mask: list[int] | np.ndarray | None = None
 ) -> list[Path]:
     """
     Inspects a ZIP file, reads all contained .npy field files in-memory,
@@ -114,14 +115,29 @@ def render_fields_from_zip(
             z_edges = np.linspace(z_min, z_max, nz + 1)
             X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
 
-            vmin, vmax = float(np.min(scalar_field)), float(np.max(scalar_field))
+            # Separate fluid vs obstacle (val=0 and val=-1) using the mask
+            if mask is not None:
+                mask_arr = np.array(mask).reshape((nx, ny, nz), order="F")
+                fluid_voxels = (mask_arr == 1)
+                obstacle_voxels = (mask_arr <= 0)  # Combines both solid (0) and wall (-1) into light-grey cage
+            else:
+                fluid_voxels = np.ones((nx, ny, nz), dtype=bool)
+                obstacle_voxels = np.zeros((nx, ny, nz), dtype=bool)
+
+            # Normalize colormap strictly across fluid cells for maximum visual contrast
+            if np.any(fluid_voxels):
+                vmin, vmax = float(np.min(scalar_field[fluid_voxels])), float(np.max(scalar_field[fluid_voxels]))
+            else:
+                vmin, vmax = float(np.min(scalar_field)), float(np.max(scalar_field))
+
             if np.isclose(vmin, vmax):
                 vmax = vmin + 1e-6
 
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             cmap = matplotlib.colormaps[colormap_name]
-            colors = cmap(norm(scalar_field))
-            colors[..., 3] = 0.75
+            
+            fluid_colors = cmap(norm(scalar_field))
+            fluid_colors[..., 3] = 0.85  # Fluid opacity
 
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection="3d")
@@ -129,14 +145,25 @@ def render_fields_from_zip(
             # Enforce true physical proportions for anisotropic grids
             ax.set_box_aspect((x_max - x_min, y_max - y_min, z_max - z_min))
 
-            filled_voxels = np.ones((nx, ny, nz), dtype=bool)
+            # 1. Render Obstacle Structural Container (mask <= 0) as light grey transparent with visible borders
+            if np.any(obstacle_voxels):
+                obs_colors = np.zeros((nx, ny, nz, 4), dtype=float)
+                obs_colors[obstacle_voxels] = [0.85, 0.85, 0.85, 0.15]  # Light grey, 15% opacity
+                ax.voxels(
+                    X, Y, Z, obstacle_voxels,
+                    facecolors=obs_colors,
+                    edgecolors=(0.5, 0.5, 0.5, 0.4),  # Visible light-grey cell edges
+                    linewidth=0.5
+                )
 
-            ax.voxels(
-                X, Y, Z, filled_voxels,
-                facecolors=colors,
-                edgecolors="k",
-                linewidth=0.6
-            )
+            # 2. Render Active Fluid Cells (mask == 1) with colormap
+            if np.any(fluid_voxels):
+                ax.voxels(
+                    X, Y, Z, fluid_voxels,
+                    facecolors=fluid_colors,
+                    edgecolors="k",
+                    linewidth=0.7
+                )
 
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min, y_max)

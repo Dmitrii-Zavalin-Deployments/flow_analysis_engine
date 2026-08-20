@@ -124,7 +124,9 @@ def main() -> None:
             zip_path = input_dir / zip_filename
             if zip_path.exists():
                 logger.info("Initializing in-memory ZIP field renderer for archive.")
-                render_fields_from_zip(zip_path, output_dir=input_dir, grid_bounds=grid_bounds)
+                # Extract mask data and pass it to support the transparent boundary cage
+                mask_data = inputs_dict.get("mask") if isinstance(inputs_dict, dict) else None
+                render_fields_from_zip(zip_path, output_dir=input_dir, grid_bounds=grid_bounds, mask=mask_data)
                 logger.info("ZIP field rendering completed successfully.")
             else:
                 logger.warning("Configured zip archive path does not exist.")
