@@ -63,8 +63,7 @@ def inspect_simulation_zip(zip_path: Path, physical_constraints: dict) -> dict:
 
             for name in npy_files:
                 with z.open(name) as f:
-                    # Added allow_pickle=True for compatibility with numpy 2.x
-                    arr = np.load(io.BytesIO(f.read()), allow_pickle=True)
+                    arr = np.load(io.BytesIO(f.read()))
                     non_zero = int(np.count_nonzero(arr))
                     total_size = int(arr.size)
                     arr_min = float(arr.min())
