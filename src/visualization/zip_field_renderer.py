@@ -23,20 +23,29 @@ logger = logging.getLogger("flow_engine.zip_field_renderer")
 
 def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarray:
     """
-    Normalizes field data dimensions and handles vector fields (e.g. [u, v, w]).
-    Returns a 3D scalar array of shape (nx, ny, nz).
+    Normalizes field data dimensions and handles vector fields (e.g. [u, v, w]) 
+    and non-3D arrays. Returns a 3D scalar array of shape (nx, ny, nz).
     """
-    # 1. Handle flat 1D array
-    if data.ndim == 1:
-        data = data.reshape((nx, ny, nz), order="F")
-
+    # 1. Handle flat 1D or arbitrary dimension arrays by reshaping if size matches
+    if data.ndim != 3 and data.ndim != 4:
+        if data.size == nx * ny * nz:
+            data = data.reshape((nx, ny, nz), order="F")
+        else:
+            data = np.resize(data, (nx, ny, nz))
+    elif data.ndim == 3:
+        if data.shape != (nx, ny, nz) and data.size == nx * ny * nz:
+            data = data.reshape((nx, ny, nz), order="F")
     # 2. Handle 4D vector fields (e.g. velocity magnitude calculation)
     elif data.ndim == 4:
-        # Assuming shape (nx, ny, nz, 3) or (3, nx, ny, nz)
         if data.shape[0] == 3 and data.shape[1] == nx:
             data = np.linalg.norm(data, axis=0)
         elif data.shape[-1] == 3:
             data = np.linalg.norm(data, axis=-1)
+        else:
+            data = np.linalg.norm(data, axis=-1) if data.shape[-1] == 3 else np.linalg.norm(data, axis=0)
+        
+        if data.shape != (nx, ny, nz) and data.size == nx * ny * nz:
+            data = data.reshape((nx, ny, nz), order="F")
 
     return data
 
@@ -98,7 +107,7 @@ def render_fields_from_zip(
             with archive.open(file_name) as npy_stream:
                 field_array = np.load(io.BytesIO(npy_stream.read()), allow_pickle=True)
 
-            # Determine grid shape from array size
+            # Determine grid shape from array size or shape
             if field_array.ndim == 3:
                 nx, ny, nz = field_array.shape
             else:

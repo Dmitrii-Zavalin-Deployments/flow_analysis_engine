@@ -71,7 +71,9 @@ def test_analyze_spatial_intervals_zip_not_found(tmp_path):
 def test_analyze_spatial_intervals_config_none(tmp_path):
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     grid_cfg = {"nx": 2, "ny": 2, "nz": 2, "x_min": 0, "x_max": 2, "y_min": 0, "y_max": 2, "z_min": 0, "z_max": 2}
 
@@ -92,7 +94,9 @@ def test_analyze_spatial_intervals_grid_validation(tmp_path):
     
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     # Test missing grid key (KeyError)
     incomplete_grid = {"nx": 2, "ny": 2}
@@ -130,7 +134,9 @@ def test_analyze_spatial_intervals_grid_validation(tmp_path):
 def test_analyze_spatial_intervals_config_variants(tmp_path):
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.ones((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.ones((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     grid_cfg = {"nx": 2, "ny": 2, "nz": 2, "x_min": 0.0, "x_max": 2.0, "y_min": 0.0, "y_max": 2.0, "z_min": 0.0, "z_max": 2.0}
 
@@ -185,19 +191,27 @@ def test_analyze_spatial_intervals_array_processing(tmp_path):
     with zipfile.ZipFile(complex_zip, "w") as zf:
         # 1D array (size 8 = 2*2*2)
         arr_1d = np.arange(8, dtype=float)
-        zf.writestr("field_1d.npy", arr_1d.tobytes())
+        buf1 = io.BytesIO()
+        np.save(buf1, arr_1d)
+        zf.writestr("field_1d.npy", buf1.getvalue())
 
         # 4D vector array (shape (3, nx, ny, nz) -> axis=0 norm)
         arr_4d_0 = np.ones((3, 2, 2, 2), dtype=float)
-        zf.writestr("vector_0.npy", arr_4d_0.tobytes())
+        buf2 = io.BytesIO()
+        np.save(buf2, arr_4d_0)
+        zf.writestr("vector_0.npy", buf2.getvalue())
 
         # 4D vector array (shape (nx, ny, nz, 3) -> axis=-1 norm)
         arr_4d_last = np.ones((2, 2, 2, 3), dtype=float)
-        zf.writestr("vector_last.npy", arr_4d_last.tobytes())
+        buf3 = io.BytesIO()
+        np.save(buf3, arr_4d_last)
+        zf.writestr("vector_last.npy", buf3.getvalue())
 
         # Unsupported 2D array
         arr_2d = np.ones((2, 2), dtype=float)
-        zf.writestr("bad_2d.npy", arr_2d.tobytes())
+        buf4 = io.BytesIO()
+        np.save(buf4, arr_2d)
+        zf.writestr("bad_2d.npy", buf4.getvalue())
 
     # Executing analysis and asserting that unsupported 2D arrays trigger ValueError.
     with pytest.raises(ValueError, match="has unsupported dimensions"):

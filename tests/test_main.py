@@ -7,6 +7,7 @@ missing inputs key protection, ZIP field rendering error pathways, and output fi
 write error handling in the main orchestration module.
 """
 
+import io
 import json
 import sys
 import zipfile
@@ -179,10 +180,12 @@ def test_main_visualization_rendering_warning(tmp_path, monkeypatch):
     }
     input_file.write_text(json.dumps(payload))
     
-    # We create a valid simulation ZIP archive.
+    # We create a valid simulation ZIP archive with a proper .npy file via np.save().
     sim_zip = data_dir / "sim.zip"
     with zipfile.ZipFile(sim_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((1, 1, 1)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((1, 1, 1)))
+        zf.writestr("u.npy", buf.getvalue())
 
     # We mock render_visualization to raise a ValueError to verify warning catch.
     import src.main as main_module
@@ -290,7 +293,9 @@ def test_main_write_output_error(tmp_path, monkeypatch):
     
     sim_zip = data_dir / "sim.zip"
     with zipfile.ZipFile(sim_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((1, 1, 1)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((1, 1, 1)))
+        zf.writestr("u.npy", buf.getvalue())
     
     # We mock built-in open to raise an OSError when writing the output file.
     import builtins

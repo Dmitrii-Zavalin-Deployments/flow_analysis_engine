@@ -41,7 +41,9 @@ def test_inspect_simulation_zip_not_found(tmp_path):
 def test_inspect_simulation_zip_constraints_none(tmp_path):
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     # Asserting that passing None raises a ValueError.
     with pytest.raises(ValueError, match="Physical constraints configuration must be explicitly provided"):
@@ -57,7 +59,9 @@ def test_inspect_simulation_zip_constraints_none(tmp_path):
 def test_inspect_simulation_zip_missing_constraint_key(tmp_path):
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     # We omit 'max_velocity' from the constraint dictionary.
     incomplete_constraints = {
@@ -79,7 +83,9 @@ def test_inspect_simulation_zip_missing_constraint_key(tmp_path):
 def test_inspect_simulation_zip_invalid_constraint_type(tmp_path):
     dummy_zip = tmp_path / "sim.zip"
     with zipfile.ZipFile(dummy_zip, "w") as zf:
-        zf.writestr("u.npy", np.zeros((2, 2, 2)).tobytes())
+        buf = io.BytesIO()
+        np.save(buf, np.zeros((2, 2, 2)))
+        zf.writestr("u.npy", buf.getvalue())
 
     # We provide a non-numeric string for max_velocity.
     invalid_constraints = {
@@ -146,15 +152,21 @@ def test_inspect_simulation_zip_success_and_violations(tmp_path):
     with zipfile.ZipFile(sim_zip, "w") as zf:
         # Velocity array (u field) with values within normal bounds
         u_arr = np.array([1.0, 2.0, 3.0, 4.0], dtype=float)
-        zf.writestr("u_field.npy", u_arr.tobytes())
+        buf1 = io.BytesIO()
+        np.save(buf1, u_arr)
+        zf.writestr("u_field.npy", buf1.getvalue())
 
         # Pressure array (p field) with targeted step name for snapshot testing (low-dim <= 2)
         p_arr = np.array([[5.0, 6.0], [7.0, 8.0]], dtype=float)
-        zf.writestr("p_field_step_000005.npy", p_arr.tobytes())
+        buf2 = io.BytesIO()
+        np.save(buf2, p_arr)
+        zf.writestr("p_field_step_000005.npy", buf2.getvalue())
 
         # High-dimensional array containing step_000005 to test flattening branch (> 2 dimensions)
         high_dim_arr = np.ones((2, 2, 2, 2), dtype=float)
-        zf.writestr("velocity_w_step_000005.npy", high_dim_arr.tobytes())
+        buf3 = io.BytesIO()
+        np.save(buf3, high_dim_arr)
+        zf.writestr("velocity_w_step_000005.npy", buf3.getvalue())
 
     # Case A: Strict constraints where all values comply (Verified = True)
     valid_constraints = {

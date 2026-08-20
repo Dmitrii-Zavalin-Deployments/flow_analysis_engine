@@ -66,7 +66,8 @@ def test_process_field_data_4d_vector_fields():
 
 def test_render_fields_missing_config_file(tmp_path):
     zip_path = tmp_path / "dummy.zip"
-    zip_path.write_bytes(b"PK...")
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        pass
 
     # Asserting that FileNotFoundError is raised when config.json cannot be found.
     with pytest.raises(FileNotFoundError, match="Configuration file for grid_bounds not found"):
@@ -107,7 +108,8 @@ def test_render_fields_missing_grid_bounds_key(tmp_path):
     config_path.write_text(json.dumps({"wrong_key": [0, 1, 0, 1, 0, 1]}))
 
     zip_path = tmp_path / "dummy.zip"
-    zip_path.write_bytes(b"PK...")
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        pass
 
     # Asserting that a KeyError is raised for the missing key.
     with pytest.raises(KeyError, match="'grid_bounds' top-level key not found"):
