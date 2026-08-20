@@ -103,7 +103,14 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
         "y_min": y_min, "y_max": y_max,
         "z_min": z_min, "z_max": z_max
     }
-    spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs)
+
+    # Resolve config.json directly from input_dir or fallback to the repository's config/config.json
+    spatial_config_path = input_dir / "config.json"
+    if not spatial_config_path.exists():
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        spatial_config_path = repo_root / "config" / "config.json"
+
+    spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs, spatial_config_path)
 
     processed_results = {
         "status": "success",

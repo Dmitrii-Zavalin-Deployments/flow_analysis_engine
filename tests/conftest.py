@@ -10,25 +10,16 @@ import src.visualization.zip_field_renderer
 
 
 @pytest.fixture(autouse=True)
-def setup_module_signature_defaults(tmp_path):
+def setup_module_signature_defaults():
     """
-    Provides default file paths and parameters for core sub-modules where
-    main.py invokes functions under strict no-default policies.
+    Provides default patching for core sub-modules where
+    functions are invoked under strict signatures.
     """
-    # Define a default spatial probe coordinate range configuration
-    spatial_cfg_path = tmp_path / "spatial_config.json"
-    spatial_cfg_data = {
-        "x_range": [0.0, 5.0],
-        "y_range": [0.0, 5.0],
-        "z_range": [0.0, 5.0]
-    }
-    spatial_cfg_path.write_text(json.dumps(spatial_cfg_data), encoding="utf-8")
-
     orig_spatial = src.core.spatial_probe.analyze_spatial_intervals
     orig_zip_render = src.visualization.zip_field_renderer.render_fields_from_zip
 
-    def patched_spatial(zip_path, grid_cfg, config_p=spatial_cfg_path):
-        return orig_spatial(zip_path, grid_cfg, config_p)
+    def patched_spatial(zip_path, grid_cfg, config_path):
+        return orig_spatial(zip_path, grid_cfg, config_path)
 
     def patched_zip_render(zip_p, output_dir, grid_bounds=(0.0, 10.0, 0.0, 10.0, 0.0, 10.0), colormap_name="viridis"):
         return orig_zip_render(zip_p, output_dir, grid_bounds, colormap_name)
@@ -46,7 +37,7 @@ def setup_module_signature_defaults(tmp_path):
 def testing_environment(tmp_path):
     """
     Prepares input/output test environment with input JSON configurations,
-    schema definition, and in-memory NumPy binary simulation archives.
+    schema definition, config.json, and in-memory NumPy binary simulation archives.
     """
     input_dir = tmp_path / "testing-input-output"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +57,15 @@ def testing_environment(tmp_path):
         "required": ["inputs"]
     }
     schema_path.write_text(json.dumps(schema_data, indent=2), encoding="utf-8")
+
+    # Write config.json directly into input_dir matching config/config.json structure
+    config_path = input_dir / "config.json"
+    config_data = {
+        "x_range": [0.0, 3.0],
+        "y_range": [0.0, 3.0],
+        "z_range": [0.0, 3.0]
+    }
+    config_path.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
 
     # Create 3D float arrays for velocity (u) and pressure (p)
     grid_dim = (2, 2, 2)
