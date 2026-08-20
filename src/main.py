@@ -101,17 +101,21 @@ def main() -> None:
         if inputs_dict is None:
             raise KeyError("Required 'inputs' section is missing from input data.")
 
+        # Prioritize dynamic input grid bounds over static config.json template values
         grid_bounds = None
-        if "grid_bounds" in config_data:
-            gb = config_data["grid_bounds"]
-            grid_bounds = tuple(float(v) for v in gb)
-        elif "grid" in inputs_dict:
+        if "grid" in inputs_dict:
             g = inputs_dict["grid"]
             grid_bounds = (
                 float(g["x_min"]), float(g["x_max"]),
                 float(g["y_min"]), float(g["y_max"]),
                 float(g["z_min"]), float(g["z_max"])
             )
+            config_data["grid_bounds"] = list(grid_bounds)
+        elif "grid_bounds" in config_data:
+            gb = config_data["grid_bounds"]
+            grid_bounds = tuple(float(v) for v in gb)
+        else:
+            raise KeyError("No valid 'grid' in inputs or 'grid_bounds' in config_data found.")
 
         # Retrieve zip_filename strictly from the results block as per schema
         results_dict = raw_data.get("results", {})
