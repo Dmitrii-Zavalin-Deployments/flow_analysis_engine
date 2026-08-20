@@ -8,9 +8,8 @@ resolution, and output file write error handling in the main orchestration modul
 leveraging the shared zero-mock pipeline test environment fixture.
 """
 
-import sys
 import json
-import zipfile
+import sys
 from unittest.mock import patch
 
 import pytest
