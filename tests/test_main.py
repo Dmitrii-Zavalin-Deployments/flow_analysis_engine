@@ -185,6 +185,64 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, pipeline_tes
         mock_render_fields.assert_called_once()
 
 
+def test_main_zip_field_rendering_config_grid_bounds_fallback(monkeypatch, pipeline_test_environment):
+    # We verify spatial limit resolution when the 'grid' section is omitted from input payload,
+    # forcing the orchestrator to fall back to 'grid_bounds' defined in config.json (covering lines 114-116).
+    env = pipeline_test_environment
+    
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    payload["inputs"].pop("grid", None)
+    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    with patch("src.main.render_fields_from_zip") as mock_render_fields:
+        main()
+        mock_render_fields.assert_called_once()
+
+
+def test_main_zip_field_rendering_no_grid_bounds_found_error(monkeypatch, pipeline_test_environment):
+    # We verify that a controlled exit occurs when both the 'grid' section in inputs
+    # and 'grid_bounds' in config.json are completely absent (covering lines 117-118).
+    env = pipeline_test_environment
+    
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    payload["inputs"].pop("grid", None)
+    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
+
+    config_file = env["repo_root"] / "config" / "config.json"
+    config_data = json.loads(config_file.read_text(encoding="utf-8"))
+    config_data.pop("grid_bounds", None)
+    config_file.write_text(json.dumps(config_data), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
 def test_main_zip_field_rendering_missing_zip_warning(monkeypatch, pipeline_test_environment):
     # We verify that referencing a non-existent ZIP archive issues a non-fatal warning.
     env = pipeline_test_environment
