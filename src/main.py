@@ -56,11 +56,10 @@ def main() -> None:
     # Optional configuration validation against flow_analysis_engine_config_schema.json
     config_path = base_dir / "config" / "config.json"
     config_schema_path = schema_dir / "flow_analysis_engine_config_schema.json"
-    config_data = {}
     if config_path.exists() and config_schema_path.exists():
         logger.info("Initializing configuration parsing and schema validation.")
         try:
-            config_data = parse_input_file(config_path, schema_path=config_schema_path)
+            parse_input_file(config_path, schema_path=config_schema_path)
             logger.info("Configuration file validated successfully.")
         except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as e:
             logger.error("Error validating config file against schema: %s", e)
