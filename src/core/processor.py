@@ -4,11 +4,13 @@ Numerical processing module for coordinate grid computation and zip inspection c
 
 from pathlib import Path
 from src.core.zip_inspector import inspect_simulation_zip
+from src.core.spatial_probe import analyze_spatial_intervals
 
 
 def process_flow_data(raw_data: dict, input_dir: Path | str = None) -> dict:
     """
-    Processes flow grid configurations and invokes zip inspection and boundary verification.
+    Processes flow grid configurations, invokes zip inspection, boundary verification,
+    and config-driven spatial interval probing.
     """
     inputs = raw_data.get("inputs", raw_data)
     grid_cfg = inputs.get("grid", {})
@@ -34,27 +36,36 @@ def process_flow_data(raw_data: dict, input_dir: Path | str = None) -> dict:
     # Dynamic Discovery of ZIP archive
     zip_filename = inputs.get("zip_filename")
     inspection_results = {}
+    spatial_analysis = {}
+
+    grid_specs = {
+        "nx": nx, "ny": ny, "nz": nz,
+        "x_min": x_min, "x_max": x_max,
+        "y_min": y_min, "y_max": y_max,
+        "z_min": z_min, "z_max": z_max
+    }
 
     if input_dir and zip_filename:
         zip_path = Path(input_dir) / zip_filename
         if zip_path.exists():
             inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
+            spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs)
     elif zip_filename and Path(zip_filename).exists():
-        inspection_results = inspect_simulation_zip(Path(zip_filename), physical_constraints)
+        zip_path = Path(zip_filename)
+        inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
+        spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs)
     else:
-        # Glob search fallback in input dir if present
         if input_dir:
             zips = list(Path(input_dir).glob("*.zip"))
             if zips:
-                inspection_results = inspect_simulation_zip(zips[0], physical_constraints)
+                zip_path = zips[0]
+                inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
+                spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs)
 
     processed_results = {
         "status": "success",
         "grid": {
-            "nx": nx, "ny": ny, "nz": nz,
-            "x_min": x_min, "x_max": x_max,
-            "y_min": y_min, "y_max": y_max,
-            "z_min": z_min, "z_max": z_max,
+            **grid_specs,
             "dx": dx, "dy": dy, "dz": dz
         },
         "mask": mask,
@@ -62,7 +73,8 @@ def process_flow_data(raw_data: dict, input_dir: Path | str = None) -> dict:
             "grid_resolution": [nx, ny, nz],
             "total_cells": nx * ny * nz
         },
-        **inspection_results
+        **inspection_results,
+        "spatial_interval_analysis": spatial_analysis
     }
 
     return processed_results
