@@ -316,36 +316,61 @@
     },
     "config": {
       "type": "object",
-      "title": "Spatial Configuration Schema",
-      "description": "Schema for validating spatial coordinate ranges in config.json",
+      "title": "Configuration Schema",
+      "description": "Schema for validating config.json with separate spatial_domain and grid_bounds sections",
       "additionalProperties": false,
       "properties": {
-        "x_range": {
-          "type": "array",
-          "items": { "type": "number" },
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Minimum and maximum X coordinate range [x_min, x_max]"
+        "spatial_domain": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x_range": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Minimum and maximum X coordinate range [x_min, x_max]"
+            },
+            "y_range": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Minimum and maximum Y coordinate range [y_min, y_max]"
+            },
+            "z_range": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Minimum and maximum Z coordinate range [z_min, z_max]"
+            }
+          },
+          "required": [
+            "x_range",
+            "y_range",
+            "z_range"
+          ]
         },
-        "y_range": {
+        "grid_bounds": {
           "type": "array",
-          "items": { "type": "number" },
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Minimum and maximum Y coordinate range [y_min, y_max]"
-        },
-        "z_range": {
-          "type": "array",
-          "items": { "type": "number" },
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Minimum and maximum Z coordinate range [z_min, z_max]"
+          "items": {
+            "type": "number"
+          },
+          "minItems": 6,
+          "maxItems": 6,
+          "description": "Rendering grid boundaries [x_min, x_max, y_min, y_max, z_min, z_max]"
         }
       },
       "required": [
-        "x_range",
-        "y_range",
-        "z_range"
+        "spatial_domain",
+        "grid_bounds"
       ]
     },
     "results": {

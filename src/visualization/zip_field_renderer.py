@@ -5,6 +5,7 @@ them to disk, generating 3D colormapped voxel visualizations with black borders.
 """
 
 import io
+import json
 import logging
 import zipfile
 from pathlib import Path
@@ -43,20 +44,36 @@ def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarra
 def render_fields_from_zip(
     zip_path: Path | str,
     output_dir: Path | str,
-    grid_bounds: tuple[float, float, float, float, float, float],
+    grid_bounds: tuple[float, float, float, float, float, float] | None = None,
     colormap_name: str = "viridis"
 ) -> list[Path]:
     """
     Inspects a ZIP file, reads all contained .npy field files in-memory,
-    and generates matching 3D voxel colormap PNG images under a strict no-default policy.
+    and generates matching 3D voxel colormap PNG images under a strict config-driven policy.
+    Loads grid_bounds from config.json if not explicitly provided.
     """
     zip_path = Path(zip_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if grid_bounds is None:
-        logger.error("Grid bounds configuration was not provided (no-default policy enforced).")
-        raise ValueError("Grid bounds must be explicitly provided.")
+        logger.info("Loading grid_bounds from config.json under config-driven policy.")
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        config_path = repo_root / "config" / "config.json"
+        if not config_path.exists():
+            config_path = output_dir / "config.json"
+
+        if not config_path.exists():
+            raise FileNotFoundError(f"Configuration file for grid_bounds not found at: {config_path}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+
+        if "grid_bounds" in cfg:
+            gb = cfg["grid_bounds"]
+            grid_bounds = tuple(float(v) for v in gb)
+        else:
+            raise KeyError("'grid_bounds' top-level key not found in config.json.")
 
     x_min, x_max, y_min, y_max, z_min, z_max = grid_bounds
     generated_pngs: list[Path] = []
