@@ -83,11 +83,34 @@ def analyze_spatial_intervals(
     dy = (y_max - y_min) / ny
     dz = (z_max - z_min) / nz
 
-    # Extract required range limits from spatial config (no-default policy)
+    # Extract required range limits from spatial config supporting 'spatial_domain', 'spatial', or 'intervals'
     try:
-        x_rng = interval_cfg["x_range"]
-        y_rng = interval_cfg["y_range"]
-        z_rng = interval_cfg["z_range"]
+        cfg = interval_cfg
+        if "spatial_domain" in cfg and isinstance(cfg["spatial_domain"], dict):
+            cfg = cfg["spatial_domain"]
+        elif "spatial" in cfg and isinstance(cfg["spatial"], dict):
+            cfg = cfg["spatial"]
+        elif "intervals" in cfg and isinstance(cfg["intervals"], dict):
+            cfg = cfg["intervals"]
+
+        x_rng = cfg.get("x_range")
+        y_rng = cfg.get("y_range")
+        z_rng = cfg.get("z_range")
+
+        # Fallback to grid bounds if specific range keys are omitted in config
+        if x_rng is None and "grid_bounds" in interval_cfg:
+            gb = interval_cfg["grid_bounds"]
+            x_rng = [gb[0], gb[1]]
+        if y_rng is None and "grid_bounds" in interval_cfg:
+            gb = interval_cfg["grid_bounds"]
+            y_rng = [gb[2], gb[3]]
+        if z_rng is None and "grid_bounds" in interval_cfg:
+            gb = interval_cfg["grid_bounds"]
+            z_rng = [gb[4], gb[5]]
+
+        if x_rng is None or y_rng is None or z_rng is None:
+            raise KeyError("Missing required range keys ('x_range', 'y_range', 'z_range') in configuration.")
+
     except KeyError as e:
         logger.error("Missing required range key in spatial configuration: %s", e)
         raise KeyError(f"Missing required range key in spatial configuration: {e}") from e
