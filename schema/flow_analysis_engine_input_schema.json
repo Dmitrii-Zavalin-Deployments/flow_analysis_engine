@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlowAnalysisEngineInput",
+  "type": "object",
+  "properties": {
+    "grid": {
+      "type": "object",
+      "properties": {
+        "nx": {"type": "integer", "minimum": 1},
+        "ny": {"type": "integer", "minimum": 1},
+        "nz": {"type": "integer", "minimum": 1},
+        "x_min": {"type": "number"},
+        "x_max": {"type": "number"},
+        "y_min": {"type": "number"},
+        "y_max": {"type": "number"},
+        "z_min": {"type": "number"},
+        "z_max": {"type": "number"}
+      },
+      "required": ["nx", "ny", "nz"]
+    },
+    "mask": {
+      "type": "array",
+      "items": {"type": "integer"}
+    },
+    "zip_filename": {"type": "string"},
+    "physical_constraints": {
+      "type": "object",
+      "properties": {
+        "min_velocity": {"type": "number"},
+        "max_velocity": {"type": "number"},
+        "min_pressure": {"type": "number"},
+        "max_pressure": {"type": "number"}
+      }
+    }
+  },
+  "required": ["grid"]
+}

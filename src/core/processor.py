@@ -1,12 +1,14 @@
-import io
-import zipfile
-import numpy as np
-from pathlib import Path
+"""
+Numerical processing module for coordinate grid computation and zip inspection coordination.
+"""
 
-def process_flow_data(raw_data: dict, input_dir: Path = None) -> dict:
+from pathlib import Path
+from src.core.zip_inspector import inspect_simulation_zip
+
+
+def process_flow_data(raw_data: dict, input_dir: Path | str = None) -> dict:
     """
-    Enhanced processor that inspects simulation ZIP archives in-memory,
-    computes field statistics, and populates structured output metrics.
+    Processes flow grid configurations and invokes zip inspection and boundary verification.
     """
     inputs = raw_data.get("inputs", raw_data)
     grid_cfg = inputs.get("grid", {})
@@ -15,49 +17,52 @@ def process_flow_data(raw_data: dict, input_dir: Path = None) -> dict:
     ny = int(grid_cfg.get("ny", 3))
     nz = int(grid_cfg.get("nz", 3))
 
-    # Default metrics fallback
-    field_summaries = {}
-    specific_step_data = {}
+    x_min = float(grid_cfg.get("x_min", 0.0))
+    x_max = float(grid_cfg.get("x_max", 3.0))
+    y_min = float(grid_cfg.get("y_min", 0.0))
+    y_max = float(grid_cfg.get("y_max", 3.0))
+    z_min = float(grid_cfg.get("z_min", 0.0))
+    z_max = float(grid_cfg.get("z_max", 3.0))
 
-    # Locate and inspect simulation ZIP if provided
-    zip_filename = inputs.get("zip_filename", "20260819_224537.zip")
-    if input_dir:
+    dx = (x_max - x_min) / nx if nx > 0 else 1.0
+    dy = (y_max - y_min) / ny if ny > 0 else 1.0
+    dz = (z_max - z_min) / nz if nz > 0 else 1.0
+
+    mask = inputs.get("mask", [0] * (nx * ny * nz))
+    physical_constraints = inputs.get("physical_constraints", {})
+
+    # Dynamic Discovery of ZIP archive
+    zip_filename = inputs.get("zip_filename")
+    inspection_results = {}
+
+    if input_dir and zip_filename:
         zip_path = Path(input_dir) / zip_filename
+        if zip_path.exists():
+            inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
+    elif zip_filename and Path(zip_filename).exists():
+        inspection_results = inspect_simulation_zip(Path(zip_filename), physical_constraints)
     else:
-        zip_path = Path("data/testing-input-output") / zip_filename
+        # Glob search fallback in input dir if present
+        if input_dir:
+            zips = list(Path(input_dir).glob("*.zip"))
+            if zips:
+                inspection_results = inspect_simulation_zip(zips[0], physical_constraints)
 
-    if zip_path.exists():
-        with zipfile.ZipFile(zip_path, "r") as z:
-            for name in sorted(z.namelist()):
-                if name.endswith(".npy"):
-                    with z.open(name) as f:
-                        arr = np.load(io.BytesIO(f.read()))
-                        non_zero = int(np.count_nonzero(arr))
-                        
-                        # Store summary stats for output
-                        field_summaries[name] = {
-                            "shape": list(arr.shape),
-                            "min": float(arr.min()),
-                            "max": float(arr.max()),
-                            "non_zero_count": non_zero,
-                            "total_size": int(arr.size)
-                        }
-
-                        # Isolate target step data (e.g., step 000005) for deep reporting
-                        if "step_000005" in name:
-                            specific_step_data[name] = arr.tolist() if arr.ndim <= 2 else arr.flatten().tolist()[:10] # sample or summary
-
-    # Construct final results dictionary matching schema requirements
     processed_results = {
         "status": "success",
-        "grid": grid_cfg,
-        "archive_inspection": field_summaries,
-        "targeted_step_snapshots": specific_step_data,
-        "metrics": {
-            "max_velocity": max([v["max"] for v in field_summaries.values()], default=1.0),
-            "grid_resolution": [nx, ny, nz]
+        "grid": {
+            "nx": nx, "ny": ny, "nz": nz,
+            "x_min": x_min, "x_max": x_max,
+            "y_min": y_min, "y_max": y_max,
+            "z_min": z_min, "z_max": z_max,
+            "dx": dx, "dy": dy, "dz": dz
         },
-        "summary": f"Successfully inspected {len(field_summaries)} field arrays from archive {zip_filename}."
+        "mask": mask,
+        "metrics": {
+            "grid_resolution": [nx, ny, nz],
+            "total_cells": nx * ny * nz
+        },
+        **inspection_results
     }
 
     return processed_results
