@@ -3,9 +3,10 @@ Literate Test Codex: Main Orchestration Script Validation
 ========================================================
 This test suite provides comprehensive narratives verifying CLI argument parsing,
 schema validation error handling, process execution failures, visualization warnings,
-missing inputs key protection, ZIP field rendering error pathways, strict input-only
-grid resolution, and output file write error handling in the main orchestration module,
-leveraging the shared zero-mock pipeline test environment fixture.
+missing inputs key protection, grid bounds parsing warnings and exceptions, fallback
+retrieval of zip_filename from inputs, ZIP field rendering error pathways, and output
+file write error handling in the main orchestration module, leveraging the shared
+zero-mock pipeline test environment fixture.
 """
 
 import json
@@ -156,6 +157,55 @@ def test_main_visualization_rendering_warning(monkeypatch, pipeline_test_environ
     with patch("src.main.render_visualization", side_effect=ValueError("Rendering engine warning")):
         main()
 
+    assert env["output_file"].exists()
+
+
+def test_main_grid_bounds_parsing_failure(monkeypatch, pipeline_test_environment):
+    # We verify that invalid grid bound values trigger a warning and subsequent KeyError exit.
+    env = pipeline_test_environment
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    payload["inputs"]["grid"]["x_min"] = "invalid_bound_string"
+    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_zip_filename_inputs_fallback(monkeypatch, pipeline_test_environment):
+    # We verify that if 'results' lacks zip_filename, it successfully falls back to inputs.
+    env = pipeline_test_environment
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    zip_name = payload["results"].pop("zip_filename", "simulation_results.zip")
+    payload["inputs"]["zip_filename"] = zip_name
+    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    main()
     assert env["output_file"].exists()
 
 

@@ -3,11 +3,12 @@ Literate Test Codex: Processor Module Validation
 ================================================
 This module defines the validation narratives for the numerical processing
 pipeline, verifying strict enforcement of configuration schemas, grid parameter
-bounds, mask dimensions, results section presence, and zip file existence 
-under the no-default policy.
+bounds, mask dimensions, results section presence, zip filename resolution fallback, 
+and zip file existence under the no-default policy.
 """
 
 import pytest
+from unittest.mock import patch
 
 from src.core.processor import process_flow_data
 
@@ -275,3 +276,44 @@ def test_process_flow_data_zip_not_found(tmp_path):
     # We assert that a FileNotFoundError is raised when the archive is missing.
     with pytest.raises(FileNotFoundError, match="Configured ZIP archive not found"):
         process_flow_data(raw_data, tmp_path)
+
+
+# ==============================================================================
+# Scenario 13: Fallback Retrieval of 'zip_filename' from 'inputs'
+# ==============================================================================
+# If the results block omits 'zip_filename' but it is specified in the inputs
+# dictionary, the processor successfully falls back to using the inputs definition.
+
+@patch("src.core.processor.inspect_simulation_zip")
+@patch("src.core.processor.analyze_spatial_intervals")
+def test_process_flow_data_fallback_zip_filename(mock_analyze, mock_inspect, tmp_path):
+    # We define a fallback archive filename within inputs while omitting it in results.
+    raw_data = {
+        "inputs": {
+            "grid": {
+                "nx": 1, "ny": 1, "nz": 1,
+                "x_min": 0.0, "x_max": 1.0,
+                "y_min": 0.0, "y_max": 1.0,
+                "z_min": 0.0, "z_max": 1.0
+            },
+            "mask": [1],
+            "physical_constraints": {},
+            "zip_filename": "fallback_simulation.zip"
+        },
+        "results": {
+            "status": "SUCCESS"
+        }
+    }
+
+    # We create the physical zip file so zip_path.exists() evaluates to True.
+    zip_file = tmp_path / "fallback_simulation.zip"
+    zip_file.write_text("dummy archive content")
+
+    mock_inspect.return_value = {"inspection_metrics": {}}
+    mock_analyze.return_value = {"spatial_analysis": {}}
+
+    # We assert that processing succeeds and utilizes the fallback zip filename.
+    result = process_flow_data(raw_data, tmp_path)
+    assert result["status"] == "success"
+    mock_inspect.assert_called_once()
+    mock_analyze.assert_called_once()
