@@ -6,11 +6,10 @@ schema enforcement, error resilience, and strict adherence to the no-default pol
 """
 
 import json
-from pathlib import Path
+
 import pytest
 
 from src.core.parser import parse_input_file
-
 
 # ==============================================================================
 # Scenario 1: Handling Missing Input Files
