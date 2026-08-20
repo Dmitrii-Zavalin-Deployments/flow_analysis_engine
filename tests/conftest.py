@@ -1,3 +1,13 @@
+"""
+Conftest Module: Shared Pytest Fixtures and Environment Setup
+==============================================================
+
+Description:
+    Provides shared fixtures for patching module signatures and establishing 
+    complete zero-mock integration test environments, including schemas, 
+    configurations, simulation ZIP archives, and input payloads.
+"""
+
 import io
 import json
 import zipfile
@@ -34,82 +44,87 @@ def setup_module_signature_defaults():
 
 
 @pytest.fixture
-def testing_environment(tmp_path):
+def pipeline_test_environment(tmp_path):
     """
-    Prepares input/output test environment with input JSON configurations,
-    schema definition, config.json, and in-memory NumPy binary simulation archives.
+    Prepares the complete test environment and file hierarchy on disk,
+    including schemas, config files, simulation binary archives, and input payloads.
     """
-    input_dir = tmp_path / "testing-input-output"
-    input_dir.mkdir(parents=True, exist_ok=True)
+    # We construct the real project directory hierarchy on disk to mirror production layout.
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    schema_dir = repo_root / "schema"
+    schema_dir.mkdir()
+    config_dir = repo_root / "config"
+    config_dir.mkdir()
+    input_dir = repo_root / "data_run"
+    input_dir.mkdir()
 
-    input_file_name = "flow_analysis_engine_input.json"
-    output_file_name = "flow_analysis_output.json"
-    zip_file_name = "simulation_data.zip"
-
-    # Write schema.json directly into input_dir for subprocess accessibility
-    schema_path = input_dir / "schema.json"
-    schema_data = {
+    # We write the required JSON schema files for input validation and configuration compliance.
+    input_schema = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
+        "required": ["config", "inputs"],
         "properties": {
-            "inputs": {"type": "object"}
-        },
-        "required": ["inputs"]
+            "config": {"type": "object"},
+            "inputs": {
+                "type": "object",
+                "required": ["grid", "mask", "physical_constraints", "zip_filename"]
+            }
+        }
     }
-    schema_path.write_text(json.dumps(schema_data, indent=2), encoding="utf-8")
+    (schema_dir / "flow_analysis_engine_input_schema.json").write_text(json.dumps(input_schema))
 
-    # Write config.json directly into input_dir matching config/config.json structure
-    config_path = input_dir / "config.json"
+    config_schema = {"type": "object"}
+    (schema_dir / "flow_analysis_engine_config_schema.json").write_text(json.dumps(config_schema))
+
+    # We define and write the spatial configuration file containing grid bounds and coordinate ranges.
     config_data = {
-        "x_range": [0.0, 3.0],
-        "y_range": [0.0, 3.0],
-        "z_range": [0.0, 3.0]
+        "grid_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "x_range": [0.0, 0.5],
+        "y_range": [0.0, 0.5],
+        "z_range": [0.0, 0.5]
     }
-    config_path.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
+    (config_dir / "config.json").write_text(json.dumps(config_data))
 
-    # Create 3D float arrays for velocity (u) and pressure (p)
-    grid_dim = (2, 2, 2)
-    u_arr = np.ones(grid_dim, dtype=np.float64) * 2.5
-    p_arr = np.ones(grid_dim, dtype=np.float64) * 101.3
+    # We generate a real simulation ZIP archive containing NumPy binary arrays (.npy) for velocity and pressure fields.
+    zip_path = input_dir / "simulation_results.zip"
+    u_field = np.ones((2, 2, 2), dtype=float) * 2.5
+    p_field = np.full((2, 2, 2), 101325.0, dtype=float)
 
-    # Assemble in-memory zip file containing simulation fields
-    zip_path = input_dir / zip_file_name
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        buf_u = io.BytesIO()
-        np.save(buf_u, u_arr)
-        zf.writestr("u_step_000005.npy", buf_u.getvalue())
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("u_step_000005.npy", u_field.tobytes())
+        zf.writestr("p_step_000005.npy", p_field.tobytes())
 
-        buf_p = io.BytesIO()
-        np.save(buf_p, p_arr)
-        zf.writestr("p_step_000005.npy", buf_p.getvalue())
-
-    # Build input json structure
-    input_data = {
+    # We formulate and write the input payload JSON containing config, grid parameters, fluid masks, and constraints.
+    input_payload = {
+        "config": {
+            "mode": "production",
+            "version": "2.0"
+        },
         "inputs": {
             "grid": {
                 "nx": 2, "ny": 2, "nz": 2,
-                "x_min": 0.0, "x_max": 10.0,
-                "y_min": 0.0, "y_max": 10.0,
-                "z_min": 0.0, "z_max": 10.0
+                "x_min": 0.0, "x_max": 1.0,
+                "y_min": 0.0, "y_max": 1.0,
+                "z_min": 0.0, "z_max": 1.0
             },
-            "mask": [1, 1, 1, 1, -1, 1, 1, 1],
+            "mask": [1, -1, 0, 1, 1, 0, -1, 1],
             "physical_constraints": {
-                "min_velocity": -10.0,
-                "max_velocity": 50.0,
+                "min_velocity": 0.0,
+                "max_velocity": 10.0,
                 "min_pressure": 0.0,
-                "max_pressure": 200.0
+                "max_pressure": 200000.0
             },
-            "zip_filename": zip_file_name
+            "zip_filename": "simulation_results.zip"
         }
     }
-
-    input_file_path = input_dir / input_file_name
-    with open(input_file_path, "w", encoding="utf-8") as f:
-        json.dump(input_data, f, indent=2)
+    input_file = input_dir / "input_run.json"
+    output_file = input_dir / "output_result.json"
+    input_file.write_text(json.dumps(input_payload))
 
     return {
-        "folder": input_dir,
-        "input_file_name": input_file_name,
-        "output_file_name": output_file_name,
-        "zip_file_name": zip_file_name
+        "input_dir": input_dir,
+        "input_file": input_file,
+        "output_file": output_file,
+        "repo_root": repo_root
     }
