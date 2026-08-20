@@ -125,6 +125,9 @@ def render_fields_from_zip(
 
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection="3d")
+            
+            # Enforce true physical proportions for anisotropic grids
+            ax.set_box_aspect((x_max - x_min, y_max - y_min, z_max - z_min))
 
             filled_voxels = np.ones((nx, ny, nz), dtype=bool)
 

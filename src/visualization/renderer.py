@@ -112,6 +112,9 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     # 1. Render Voxel Mask Snapshot
     fig = plt.figure(figsize=(9, 9))
     ax = fig.add_subplot(111, projection="3d")
+    
+    # Enforce correct physical aspect ratio based on domain bounds spans
+    ax.set_box_aspect((x_max - x_min, y_max - y_min, z_max - z_min))
 
     x_edges = np.linspace(x_min, x_max, nx + 1)
     y_edges = np.linspace(y_min, y_max, ny + 1)
