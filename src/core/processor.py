@@ -82,12 +82,17 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
 
     physical_constraints = inputs["physical_constraints"]
 
-    # Enforce zip_filename presence (no auto-discovery or globbing fallback)
-    if "zip_filename" not in inputs:
-        logger.error("Missing required 'zip_filename' parameter in inputs.")
-        raise KeyError("Missing required 'zip_filename' parameter in inputs.")
+    # Enforce strict schema compliance: zip_filename resides in the results block
+    if "results" not in raw_data or not isinstance(raw_data["results"], dict):
+        logger.error("Missing required 'results' section in raw data.")
+        raise KeyError("Missing required 'results' section in raw data.")
 
-    zip_filename = inputs["zip_filename"]
+    results_cfg = raw_data["results"]
+    if "zip_filename" not in results_cfg:
+        logger.error("Missing required 'zip_filename' parameter in results.")
+        raise KeyError("Missing required 'zip_filename' parameter in results.")
+
+    zip_filename = results_cfg["zip_filename"]
     zip_path = input_dir / zip_filename
 
     if not zip_path.exists():

@@ -3,7 +3,8 @@ Literate Test Codex: Processor Module Validation
 ================================================
 This module defines the validation narratives for the numerical processing
 pipeline, verifying strict enforcement of configuration schemas, grid parameter
-bounds, mask dimensions, and zip file existence under the no-default policy.
+bounds, mask dimensions, results section presence, and zip file existence 
+under the no-default policy.
 """
 
 import pytest
@@ -19,7 +20,7 @@ from src.core.processor import process_flow_data
 def test_process_flow_data_invalid_directory(tmp_path):
     # We define a path that does not correspond to an actual directory.
     non_existent_dir = tmp_path / "missing_directory"
-    
+
     # We assert that a NotADirectoryError is raised immediately.
     with pytest.raises(NotADirectoryError, match="Input directory not found"):
         process_flow_data({}, non_existent_dir)
@@ -194,9 +195,34 @@ def test_process_flow_data_missing_constraints(tmp_path):
 
 
 # ==============================================================================
-# Scenario 10: Enforcing Zip Filename Presence
+# Scenario 10: Enforcing Mandatory 'results' Section
 # ==============================================================================
-# The processor requires an explicit target simulation archive filename with 
+# The raw data payload must include a 'results' section containing execution outputs.
+
+def test_process_flow_data_missing_results_section(tmp_path):
+    raw_data = {
+        "inputs": {
+            "grid": {
+                "nx": 1, "ny": 1, "nz": 1,
+                "x_min": 0.0, "x_max": 1.0,
+                "y_min": 0.0, "y_max": 1.0,
+                "z_min": 0.0, "z_max": 1.0
+            },
+            "mask": [1],
+            "physical_constraints": {}
+        }
+        # 'results' section is omitted entirely
+    }
+
+    # We assert that a KeyError is raised when the results section is missing.
+    with pytest.raises(KeyError, match="Missing required 'results' section"):
+        process_flow_data(raw_data, tmp_path)
+
+
+# ==============================================================================
+# Scenario 11: Enforcing Zip Filename Presence in Results
+# ==============================================================================
+# The results block requires an explicit target simulation archive filename with 
 # no auto-discovery or globbing fallbacks.
 
 def test_process_flow_data_missing_zip_filename(tmp_path):
@@ -210,16 +236,20 @@ def test_process_flow_data_missing_zip_filename(tmp_path):
             },
             "mask": [1],
             "physical_constraints": {}
+        },
+        "results": {
+            "status": "SUCCESS"
+            # 'zip_filename' is omitted from results
         }
     }
 
-    # We assert that a KeyError is raised when zip_filename is omitted.
-    with pytest.raises(KeyError, match="Missing required 'zip_filename' parameter"):
+    # We assert that a KeyError is raised when zip_filename is omitted from results.
+    with pytest.raises(KeyError, match="Missing required 'zip_filename' parameter in results"):
         process_flow_data(raw_data, tmp_path)
 
 
 # ==============================================================================
-# Scenario 11: Verifying Simulation Archive Existence
+# Scenario 12: Verifying Simulation Archive Existence
 # ==============================================================================
 # If the configured zip filename does not exist within the input directory,
 # a FileNotFoundError must be raised.
@@ -234,7 +264,10 @@ def test_process_flow_data_zip_not_found(tmp_path):
                 "z_min": 0.0, "z_max": 1.0
             },
             "mask": [1],
-            "physical_constraints": {},
+            "physical_constraints": {}
+        },
+        "results": {
+            "status": "SUCCESS",
             "zip_filename": "non_existent_simulation.zip"
         }
     }
