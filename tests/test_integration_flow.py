@@ -39,13 +39,15 @@ def test_full_pipeline_integration_success_path(testing_environment):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root)
 
-    # We run main.py in a process to capture stdout and stderr streams.
+    # We run main.py in a process to capture stdout and stderr streams,
+    # specifying check=False to satisfy Ruff rule PLW1510.
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         env=env,
-        cwd=str(repo_root)
+        cwd=str(repo_root),
+        check=False,
     )
 
     # The pipeline execution exit code must be zero, indicating error-free completion.
