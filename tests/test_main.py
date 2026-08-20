@@ -191,6 +191,7 @@ def test_main_zip_filename_inputs_fallback(monkeypatch, pipeline_test_environmen
     payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
     zip_name = payload["results"].pop("zip_filename", "simulation_results.zip")
     payload["inputs"]["zip_filename"] = zip_name
+    monkeypatch.setattr("src.main.load_and_validate_input", lambda *args, **kwargs: payload)
     env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
 
     monkeypatch.setattr(
