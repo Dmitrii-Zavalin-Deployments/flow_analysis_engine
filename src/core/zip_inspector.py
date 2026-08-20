@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 
-def inspect_simulation_zip(zip_path: Path, physical_constraints: dict = None) -> dict:
+def inspect_simulation_zip(zip_path: Path, physical_constraints: dict | None = None) -> dict:
     """
     Reads .npy files directly from a ZIP archive in-memory, computes summary statistics,
     extracts targeted step snapshots, and validates against physical constraints.

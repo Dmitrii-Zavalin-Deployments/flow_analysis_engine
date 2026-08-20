@@ -8,7 +8,7 @@ from pathlib import Path
 import jsonschema
 
 
-def parse_input_file(input_path: Path, schema_path: Path = None) -> dict:
+def parse_input_file(input_path: Path, schema_path: Path | None = None) -> dict:
     """
     Loads, parses, and validates the input JSON file against the JSON schema.
     """

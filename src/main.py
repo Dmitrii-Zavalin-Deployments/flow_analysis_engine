@@ -51,7 +51,7 @@ def main():
     try:
         raw_data = parse_input_file(input_path)
         logger.info("Successfully parsed and validated input data.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("Error validating input file against schema: %s", e)
         sys.exit(1)
 
@@ -59,7 +59,7 @@ def main():
     try:
         processed_results = process_flow_data(raw_data, input_dir=input_dir)
         logger.info("Successfully executed flow processing and spatial probing.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("Error during flow processing: %s", e)
         sys.exit(1)
 
@@ -67,7 +67,7 @@ def main():
     try:
         render_visualization(raw_data, processed_results, output_dir=input_dir)
         logger.info("Voxel visualization rendered successfully.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
     # In-memory ZIP field rendering for simulation .npy results
@@ -82,7 +82,7 @@ def main():
             try:
                 render_fields_from_zip(zip_path, output_dir=input_dir)
                 logger.info("ZIP field rendering completed successfully.")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning("ZIP field rendering encountered an issue: %s", e)
         else:
             logger.warning("Configured zip archive path does not exist.")
@@ -98,7 +98,7 @@ def main():
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(final_output, f, indent=2)
         logger.info("Successfully wrote final output file.")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("Error writing output file: %s", e)
         sys.exit(1)
 

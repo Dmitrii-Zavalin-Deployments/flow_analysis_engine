@@ -62,7 +62,7 @@ def render_fields_from_zip(
         npy_files = [f for f in archive.namelist() if f.endswith(".npy")]
         
         if not npy_files:
-            print(f"⚠️ No .npy files found inside {zip_path.name}")
+            print(f"⚠ No .npy files found inside {zip_path.name}")
             return generated_pngs
 
         print(f"📦 Found {len(npy_files)} field file(s) inside {zip_path.name}")
@@ -79,7 +79,7 @@ def render_fields_from_zip(
             else:
                 # Default to cube grid root calculation
                 total_elements = field_array.shape[0] if field_array.ndim == 1 else field_array.size
-                n_side = int(round(total_elements ** (1 / 3)))
+                n_side = round(total_elements ** (1 / 3))
                 nx, ny, nz = n_side, n_side, n_side
 
             scalar_field = process_field_data(field_array, nx, ny, nz)
