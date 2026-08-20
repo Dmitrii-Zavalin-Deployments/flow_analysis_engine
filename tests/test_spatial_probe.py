@@ -6,9 +6,9 @@ module, including configuration loading, coordinate interval slicing, in-memory
 NumPy array dimension transformations, and strict error resilience under the no-default policy.
 """
 
+import io
 import json
 import zipfile
-import io
 
 import numpy as np
 import pytest

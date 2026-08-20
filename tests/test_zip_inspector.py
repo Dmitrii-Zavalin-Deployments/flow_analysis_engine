@@ -6,8 +6,8 @@ archive inspection, Navier-Stokes global field statistics tracking, targeted
 step snapshot extraction, and Bernoulli boundary constraint verification.
 """
 
-import zipfile
 import io
+import zipfile
 
 import numpy as np
 import pytest
