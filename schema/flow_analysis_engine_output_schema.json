@@ -1,148 +1,507 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Simulation Results Schema",
-  "description": "Schema for validating the execution results, grid parameters, mask arrays, and Navier-Stokes summary metrics.",
+  "title": "FlowAnalysisEngineMasterSchema",
+  "description": "Master schema containing nested input run bundle, spatial config schema, and detailed results schema.",
   "type": "object",
   "properties": {
-    "status": {
-      "type": "string",
-      "description": "Execution status of the simulation pipeline"
-    },
-    "grid": {
+    "inputs": {
       "type": "object",
+      "title": "FlowAnalysisEngineInput",
+      "additionalProperties": false,
       "properties": {
-        "nx": { "type": "integer", "minimum": 1 },
-        "ny": { "type": "integer", "minimum": 1 },
-        "nz": { "type": "integer", "minimum": 1 },
-        "x_min": { "type": "number" },
-        "x_max": { "type": "number" },
-        "y_min": { "type": "number" },
-        "y_max": { "type": "number" },
-        "z_min": { "type": "number" },
-        "z_max": { "type": "number" },
-        "dx": { "type": "number", "exclusiveMinimum": 0 },
-        "dy": { "type": "number", "exclusiveMinimum": 0 },
-        "dz": { "type": "number", "exclusiveMinimum": 0 }
-      },
-      "required": ["nx", "ny", "nz", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "dx", "dy", "dz"],
-      "additionalProperties": false
-    },
-    "mask": {
-      "type": "array",
-      "items": { "type": "integer" },
-      "description": "Flat list representing 3D cell classifications (-1 for wall, 0 for solid, 1 for fluid)"
-    },
-    "metrics": {
-      "type": "object",
-      "properties": {
-        "grid_resolution": {
-          "type": "array",
-          "items": { "type": "integer" },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "total_cells": { "type": "integer", "minimum": 1 }
-      },
-      "required": ["grid_resolution", "total_cells"],
-      "additionalProperties": false
-    },
-    "archive_name": {
-      "type": "string",
-      "description": "Filename of the generated ZIP container"
-    },
-    "navier_stokes_summary": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "shape": {
-            "type": "array",
-            "items": { "type": "integer" },
-            "minItems": 3,
-            "maxItems": 3
-          },
-          "min": { "type": "number" },
-          "max": { "type": "number" },
-          "mean": { "type": "number" },
-          "non_zero_count": { "type": "integer" },
-          "total_size": { "type": "integer" },
-          "non_zero_ratio": { "type": "number" }
-        },
-        "required": ["shape", "min", "max", "mean", "non_zero_count", "total_size", "non_zero_ratio"],
-        "additionalProperties": false
-      }
-    },
-    "targeted_step_snapshots": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "array",
-        "items": { "type": "number" }
-      }
-    },
-    "bernoulli_boundary_check": {
-      "type": "object",
-      "properties": {
-        "verified": { "type": "boolean" },
-        "details": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "required": ["verified", "details"],
-      "additionalProperties": false
-    },
-    "spatial_interval_analysis": {
-      "type": "object",
-      "properties": {
-        "coordinate_bounds": {
+        "inputs": {
           "type": "object",
+          "description": "Deterministic Navier-Stokes solver input used for this run. Echoed exactly as received.",
+          "additionalProperties": false,
+          "required": [
+            "grid",
+            "fluid_properties",
+            "initial_conditions",
+            "simulation_parameters",
+            "boundary_conditions",
+            "mask",
+            "external_forces",
+            "domain_configuration",
+            "physical_constraints"
+          ],
           "properties": {
-            "x_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            "y_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            "z_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
-          },
-          "required": ["x_range", "y_range", "z_range"],
-          "additionalProperties": false
-        },
-        "index_slices": {
-          "type": "object",
-          "properties": {
-            "i": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
-            "j": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
-            "k": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 }
-          },
-          "required": ["i", "j", "k"],
-          "additionalProperties": false
-        },
-        "field_interval_statistics": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "min": { "type": "number" },
-              "max": { "type": "number" },
-              "mean": { "type": "number" },
-              "active_cells": { "type": "integer" }
+            "physical_constraints": {
+              "type": "object",
+              "required": [
+                "min_velocity",
+                "max_velocity",
+                "min_pressure",
+                "max_pressure"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "min_velocity": {
+                  "type": "number",
+                  "description": "Lower bound for any velocity component (u, v, w)."
+                },
+                "max_velocity": {
+                  "type": "number",
+                  "description": "Upper bound for any velocity component."
+                },
+                "min_pressure": {
+                  "type": "number",
+                  "description": "Lower bound for pressure."
+                },
+                "max_pressure": {
+                  "type": "number",
+                  "description": "Upper bound for pressure."
+                }
+              }
             },
-            "required": ["min", "max", "mean", "active_cells"],
-            "additionalProperties": false
+            "domain_configuration": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "INTERNAL",
+                    "EXTERNAL"
+                  ],
+                  "description": "INTERNAL: Pressure-driven pipe flow. EXTERNAL: Far-field aerodynamics."
+                },
+                "reference_velocity": {
+                  "type": "array",
+                  "description": "Optional reference velocity of the EXTERNAL flow",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "grid": {
+              "type": "object",
+              "required": [
+                "x_min",
+                "x_max",
+                "y_min",
+                "y_max",
+                "z_min",
+                "z_max",
+                "nx",
+                "ny",
+                "nz"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "x_min": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain start in X."
+                },
+                "x_max": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain end in X."
+                },
+                "y_min": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain start in Y."
+                },
+                "y_max": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain end in Y."
+                },
+                "z_min": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain start in Z."
+                },
+                "z_max": {
+                  "type": "number",
+                  "description": "Physical coordinate of the domain end in Z."
+                },
+                "nx": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Number of discrete computational cells along the X-axis."
+                },
+                "ny": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Number of discrete computational cells along the Y-axis."
+                },
+                "nz": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Number of discrete computational cells along the Z-axis."
+                }
+              }
+            },
+            "fluid_properties": {
+              "type": "object",
+              "required": [
+                "density",
+                "viscosity"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "density": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "viscosity": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            "initial_conditions": {
+              "type": "object",
+              "required": [
+                "velocity",
+                "pressure"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "velocity": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "pressure": {
+                  "type": "number"
+                }
+              }
+            },
+            "simulation_parameters": {
+              "type": "object",
+              "required": [
+                "time_step",
+                "total_time",
+                "output_interval"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "time_step": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "total_time": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "output_interval": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "boundary_conditions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "location",
+                  "type",
+                  "values"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "location": {
+                    "enum": [
+                      "x_min",
+                      "x_max",
+                      "y_min",
+                      "y_max",
+                      "z_min",
+                      "z_max",
+                      "wall"
+                    ]
+                  },
+                  "type": {
+                    "enum": [
+                      "no-slip",
+                      "free-slip",
+                      "inflow",
+                      "outflow",
+                      "pressure"
+                    ]
+                  },
+                  "values": {
+                    "type": "object",
+                    "properties": {
+                      "u": { "type": "number" },
+                      "v": { "type": "number" },
+                      "w": { "type": "number" },
+                      "p": { "type": "number" }
+                    },
+                    "additionalProperties": false,
+                    "minProperties": 1
+                  }
+                }
+              }
+            },
+            "mask": {
+              "type": "array",
+              "description": "Canonical flattening: i + nx*(j + ny*k). Must match grid.nx*grid.ny*grid.nz length.",
+              "items": {
+                "type": "integer",
+                "enum": [-1, 0, 1]
+              }
+            },
+            "external_forces": {
+              "type": "object",
+              "required": ["force_vector"],
+              "additionalProperties": false,
+              "properties": {
+                "force_vector": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_poisson_iterations",
+            "poisson_tolerance"
+          ],
+          "properties": {
+            "max_poisson_iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of iterations allowed for the Poisson pressure solver convergence."
+            },
+            "poisson_tolerance": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Convergence residual tolerance threshold for the Poisson pressure solver."
+            }
+          }
+        },
+        "results": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "zip_filename"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "SUCCESS",
+                "FAILURE"
+              ],
+              "description": "Execution status of the Navier-Stokes simulation run."
+            },
+            "zip_filename": {
+              "type": "string",
+              "description": "Filename of the generated output ZIP archive containing 1D field snapshots (u, v, w, p), or 'NOT_APPLICABLE' if execution failed."
+            }
           }
         }
       },
-      "required": ["coordinate_bounds", "index_slices", "field_interval_statistics"],
-      "additionalProperties": false
+      "required": [
+        "inputs",
+        "config",
+        "results"
+      ]
+    },
+    "config": {
+      "type": "object",
+      "title": "Spatial Configuration Schema",
+      "description": "Schema for validating spatial coordinate ranges in config.json",
+      "additionalProperties": false,
+      "properties": {
+        "x_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Minimum and maximum X coordinate range [x_min, x_max]"
+        },
+        "y_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Minimum and maximum Y coordinate range [y_min, y_max]"
+        },
+        "z_range": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Minimum and maximum Z coordinate range [z_min, z_max]"
+        }
+      },
+      "required": [
+        "x_range",
+        "y_range",
+        "z_range"
+      ]
+    },
+    "results": {
+      "type": "object",
+      "title": "Simulation Results Schema",
+      "description": "Schema for validating the execution results, grid parameters, mask arrays, and Navier-Stokes summary metrics.",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Execution status of the simulation pipeline"
+        },
+        "grid": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nx", "ny", "nz", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "dx", "dy", "dz"
+          ],
+          "properties": {
+            "nx": { "type": "integer", "minimum": 1 },
+            "ny": { "type": "integer", "minimum": 1 },
+            "nz": { "type": "integer", "minimum": 1 },
+            "x_min": { "type": "number" },
+            "x_max": { "type": "number" },
+            "y_min": { "type": "number" },
+            "y_max": { "type": "number" },
+            "z_min": { "type": "number" },
+            "z_max": { "type": "number" },
+            "dx": { "type": "number", "exclusiveMinimum": 0 },
+            "dy": { "type": "number", "exclusiveMinimum": 0 },
+            "dz": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "mask": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Flat list representing 3D cell classifications (-1 for wall, 0 for solid, 1 for fluid)"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["grid_resolution", "total_cells"],
+          "properties": {
+            "grid_resolution": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "total_cells": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "archive_name": {
+          "type": "string",
+          "description": "Filename of the generated ZIP container"
+        },
+        "navier_stokes_summary": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["shape", "min", "max", "mean", "non_zero_count", "total_size", "non_zero_ratio"],
+            "properties": {
+              "shape": {
+                "type": "array",
+                "items": { "type": "integer" },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "mean": { "type": "number" },
+              "non_zero_count": { "type": "integer" },
+              "total_size": { "type": "integer" },
+              "non_zero_ratio": { "type": "number" }
+            }
+          }
+        },
+        "targeted_step_snapshots": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "number" }
+          }
+        },
+        "bernoulli_boundary_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["verified", "details"],
+          "properties": {
+            "verified": { "type": "boolean" },
+            "details": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "spatial_interval_analysis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["coordinate_bounds", "index_slices", "field_interval_statistics"],
+          "properties": {
+            "coordinate_bounds": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x_range", "y_range", "z_range"],
+              "properties": {
+                "x_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+                "y_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+                "z_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+              }
+            },
+            "index_slices": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["i", "j", "k"],
+              "properties": {
+                "i": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+                "j": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+                "k": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 }
+              }
+            },
+            "field_interval_statistics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["min", "max", "mean", "active_cells"],
+                "properties": {
+                  "min": { "type": "number" },
+                  "max": { "type": "number" },
+                  "mean": { "type": "number" },
+                  "active_cells": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "status",
+        "grid",
+        "mask",
+        "metrics",
+        "archive_name",
+        "navier_stokes_summary",
+        "targeted_step_snapshots",
+        "bernoulli_boundary_check",
+        "spatial_interval_analysis"
+      ]
     }
   },
   "required": [
-    "status",
-    "grid",
-    "mask",
-    "metrics",
-    "archive_name",
-    "navier_stokes_summary",
-    "targeted_step_snapshots",
-    "bernoulli_boundary_check",
-    "spatial_interval_analysis"
+    "inputs",
+    "config",
+    "results"
   ],
   "additionalProperties": false
 }
