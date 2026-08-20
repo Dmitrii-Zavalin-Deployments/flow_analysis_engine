@@ -7,6 +7,7 @@ and verifies compliance against Bernoulli physical constraints.
 import io
 import zipfile
 from pathlib import Path
+
 import numpy as np
 
 

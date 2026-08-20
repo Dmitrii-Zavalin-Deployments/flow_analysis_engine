@@ -4,10 +4,9 @@ Verifies complete pipeline execution, error handling, and structured logging out
 """
 
 import json
-import sys
-from pathlib import Path
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from src.main import main
 

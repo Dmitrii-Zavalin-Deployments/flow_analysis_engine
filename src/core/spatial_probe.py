@@ -6,8 +6,9 @@ from in-memory simulation .npy files without disk extraction.
 
 import io
 import json
-from pathlib import Path
 import zipfile
+from pathlib import Path
+
 import numpy as np
 
 

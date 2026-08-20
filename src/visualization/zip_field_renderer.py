@@ -5,14 +5,16 @@ them to disk, generating 3D colormapped voxel visualizations with black borders.
 """
 
 import io
-from pathlib import Path
 import zipfile
+from pathlib import Path
+
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive headless backend
-import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cm
 
 
 def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarray:

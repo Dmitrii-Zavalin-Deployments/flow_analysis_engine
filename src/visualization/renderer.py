@@ -4,11 +4,13 @@ to generate diagnostic 3D voxel mask snapshots for the flow analysis engine.
 """
 
 from pathlib import Path
+
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive backend
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.patches as mpatches
 
 
 def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:

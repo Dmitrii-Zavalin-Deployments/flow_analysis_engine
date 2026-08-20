@@ -4,6 +4,7 @@ Input parsing and schema validation module.
 
 import json
 from pathlib import Path
+
 import jsonschema
 
 

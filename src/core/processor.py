@@ -3,8 +3,9 @@ Numerical processing module for coordinate grid computation and zip inspection c
 """
 
 from pathlib import Path
-from src.core.zip_inspector import inspect_simulation_zip
+
 from src.core.spatial_probe import analyze_spatial_intervals
+from src.core.zip_inspector import inspect_simulation_zip
 
 
 def process_flow_data(raw_data: dict, input_dir: Path | str = None) -> dict:
