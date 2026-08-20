@@ -1,51 +1,40 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Forensic Audit Script for CI/CD Failure Diagnostics (Post-Test)
-# Target: flow_analysis_engine (test_full_pipeline_integration_positive_path)
+# Forensic Audit & Automated Repair Script for Flow Analysis Engine
+# Target Issue: NumPy loading error due to pickled data objects (allow_pickle=False)
 # ==============================================================================
 
 set -euo pipefail
 
-echo "=================================================="
-echo "          BEGINNING FORENSIC AUDIT RUN            "
-echo "=================================================="
+echo "=============================================================================="
+echo "1. DIAGNOSTICS: Locating numpy.load() occurrences across the codebase"
+echo "=============================================================================="
+grep -rn "np.load" src/ || echo "No direct np.load found, searching for load variants..."
+grep -rn "load(" src/core/ || true
 
-# 1. Diagnostic: Environment & Git State Checks
-echo "[DIAGNOSTIC] Checking repository status and recent commits..."
-git status -s || true
-git log -1 --oneline || true
-python3 --version || true
-python3 -m pytest --version || true
-
-# 2. Diagnostic: Search codebase for SystemExit or exit triggers
-echo "[DIAGNOSTIC] Searching for explicit SystemExit or exit triggers..."
-grep -rn "SystemExit" src/ tests/ || true
-grep -rn "sys.exit" src/ tests/ || true
-
-# 3. Smoking-Gun Source Audit: Main Orchestrator (`src/main.py`)
-echo "[SMOKING-GUN AUDIT] Line-numbered view of src/main.py exit blocks:"
-if [ -f "src/main.py" ]; then
-    cat -n src/main.py | head -n 135
+echo ""
+echo "=============================================================================="
+echo "2. SMOKING-GUN SOURCE AUDIT: Line-numbered view of processor.py"
+echo "=============================================================================="
+if [ -f "src/core/processor.py" ]; then
+    cat -n src/core/processor.py
 else
-    echo "WARNING: src/main.py not found."
+    echo "Warning: src/core/processor.py not found in current directory."
 fi
 
-# 4. Smoking-Gun Source Audit: Parser Module
-echo "[SMOKING-GUN AUDIT] Line-numbered view of src/core/parser.py:"
-if [ -f "src/core/parser.py" ]; then
-    cat -n src/core/parser.py
-else
-    echo "WARNING: src/core/parser.py not found."
-fi
+echo ""
+echo "=============================================================================="
+echo "3. ENVIRONMENT & TEST RUNNER CHECK"
+echo "=============================================================================="
+python3 -c "import sys, numpy; print('Python:', sys.version); print('NumPy version:', numpy.__version__)"
+pytest --version || echo "pytest not found in current PATH environment."
 
-# 5. Diagnostic: Re-run targeted pytest using python module execution
-echo "[DIAGNOSTIC] Executing targeted pytest with short tracebacks..."
-python3 -m pytest tests/test_integration_flow.py -k "test_full_pipeline_integration_positive_path" --tb=short || true
+echo ""
+echo "=============================================================================="
+echo "4. AUTOMATED REPAIRS (sed Injections - Uncomment to apply)"
+echo "=============================================================================="
+# Fix numpy load in processor.py by enabling allow_pickle=True for trusted array files
+# sed -i 's/np.load(/np.load(..., allow_pickle=True)/g' src/core/processor.py
+# sed -i 's/np.load(\([^)]*\))/np.load(\1, allow_pickle=True)/g' src/core/processor.py
 
-# 6. Automated Repair Injection Templates (Commented out via # sed)
-# Uncomment below to replace sys.exit(1) with exceptions for cleaner test capture if desired:
-# sed -i 's/sys.exit(1)/raise RuntimeError("Pipeline execution failed")/g' src/main.py
-
-echo "=================================================="
-echo "            FORENSIC AUDIT COMPLETE               "
-echo "=================================================="
+echo "Forensic audit script execution completed."
