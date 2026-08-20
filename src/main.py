@@ -56,10 +56,11 @@ def main() -> None:
     # Optional configuration validation against flow_analysis_engine_config_schema.json
     config_path = base_dir / "config" / "config.json"
     config_schema_path = schema_dir / "flow_analysis_engine_config_schema.json"
+    config_data = {}
     if config_path.exists() and config_schema_path.exists():
         logger.info("Initializing configuration parsing and schema validation.")
         try:
-            parse_input_file(config_path, schema_path=config_schema_path)
+            config_data = parse_input_file(config_path, schema_path=config_schema_path)
             logger.info("Configuration file validated successfully.")
         except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as e:
             logger.error("Error validating config file against schema: %s", e)
@@ -94,23 +95,36 @@ def main() -> None:
     except (ValueError, OSError, RuntimeError) as e:
         logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
-    # In-memory ZIP field rendering for simulation .npy results (No-default policy enforced)
-    inputs_dict = raw_data.get("inputs")
-    if inputs_dict is None:
-        raise KeyError("Required 'inputs' section is missing from input data.")
+    # In-memory ZIP field rendering for simulation .npy results (Strict Non-Default Policy Enforced)
+    try:
+        inputs_dict = raw_data.get("inputs")
+        if inputs_dict is None:
+            raise KeyError("Required 'inputs' section is missing from input data.")
 
-    zip_filename = inputs_dict.get("zip_filename")
-    if zip_filename:
-        zip_path = input_dir / zip_filename
-        if zip_path.exists():
-            logger.info("Initializing in-memory ZIP field renderer for archive.")
-            try:
-                render_fields_from_zip(zip_path, output_dir=input_dir)
+        grid_bounds = None
+        if "grid_bounds" in config_data:
+            gb = config_data["grid_bounds"]
+            grid_bounds = tuple(float(v) for v in gb)
+        elif "grid" in inputs_dict:
+            g = inputs_dict["grid"]
+            grid_bounds = (
+                float(g["x_min"]), float(g["x_max"]),
+                float(g["y_min"]), float(g["y_max"]),
+                float(g["z_min"]), float(g["z_max"])
+            )
+
+        zip_filename = inputs_dict.get("zip_filename")
+        if zip_filename:
+            zip_path = input_dir / zip_filename
+            if zip_path.exists():
+                logger.info("Initializing in-memory ZIP field renderer for archive.")
+                render_fields_from_zip(zip_path, output_dir=input_dir, grid_bounds=grid_bounds)
                 logger.info("ZIP field rendering completed successfully.")
-            except (FileNotFoundError, zipfile.BadZipFile, OSError, ValueError) as e:
-                logger.warning("ZIP field rendering encountered an issue: %s", e)
-        else:
-            logger.warning("Configured zip archive path does not exist.")
+            else:
+                logger.warning("Configured zip archive path does not exist.")
+    except (FileNotFoundError, KeyError, zipfile.BadZipFile, OSError, ValueError) as e:
+        logger.error("Error during ZIP field rendering or strict grid boundary resolution: %s", e)
+        sys.exit(1)
 
     # Construct merged output structure: {"inputs": ..., "results": ...}
     final_output = {
