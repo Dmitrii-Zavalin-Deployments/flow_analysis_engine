@@ -72,7 +72,7 @@ def test_full_pipeline_integration_success_path(testing_environment):
         "Successfully executed flow processing and spatial probing.",
         "Initializing headless rendering and visualization pipeline.",
         "Initializing 3D voxel mask and mesh rendering pipeline.",
-        "Generated 3D Voxel Verification snapshot: voxel_mask_verification.png",
+        "Generated 3D Voxel Verification snapshot: integration_voxel_verification.png",
         "Generated Mesh Snapshot: mesh_snapshot.png",
         "Generated STEP Geometry Snapshot: step_snapshot.png",
         "Voxel visualization rendered successfully.",
@@ -120,7 +120,7 @@ def test_full_pipeline_integration_success_path(testing_environment):
 
     # We verify that all diagnostic visualization images were saved and are non-empty.
     expected_generated_pngs = [
-        "voxel_mask_verification.png",
+        "integration_voxel_verification.png",
         "mesh_snapshot.png",
         "step_snapshot.png",
         "u_step_000005_3d_verification.png",

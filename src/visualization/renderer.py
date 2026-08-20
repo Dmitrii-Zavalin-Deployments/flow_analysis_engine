@@ -154,7 +154,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     ]
     ax.legend(handles=legend_handles, loc="upper right")
 
-    voxel_path = output_dir / "voxel_mask_verification.png"
+    voxel_path = output_dir / "integration_voxel_verification.png"
     plt.savefig(voxel_path, dpi=150, bbox_inches="tight", pad_inches=0.4)
     plt.close(fig)
     logger.info("Generated 3D Voxel Verification snapshot: %s", voxel_path.name)

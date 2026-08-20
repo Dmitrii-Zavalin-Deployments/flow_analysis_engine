@@ -365,7 +365,7 @@ jobs:
       #           &rarr;
       #         </td>
       #         <td style="border: 1px solid white; text-align: center; vertical-align: middle; padding: 0 8px; background: transparent;">
-      #           <img src="data/testing-input-output/voxel_mask_verification.png" width="210" />
+      #           <img src="data/testing-input-output/integration_voxel_verification.png" width="210" />
       #         </td>
       #       </tr>
       #     </table>
