@@ -187,12 +187,13 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, pipeline_tes
 
 def test_main_zip_field_rendering_config_grid_bounds_fallback(monkeypatch, pipeline_test_environment):
     # We verify spatial limit resolution when the 'grid' section is omitted from input payload,
-    # forcing the orchestrator to fall back to 'grid_bounds' defined in config.json (covering lines 114-116).
+    # utilizing config.json's 'grid_bounds' by mocking parse_input_file to bypass strict schema checks.
     env = pipeline_test_environment
     
-    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
-    payload["inputs"].pop("grid", None)
-    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
+    config_file = env["repo_root"] / "config" / "config.json"
+    config_data = json.loads(config_file.read_text(encoding="utf-8"))
+    config_data["grid_bounds"] = [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+    config_file.write_text(json.dumps(config_data), encoding="utf-8")
 
     monkeypatch.setattr(
         sys,
@@ -206,20 +207,24 @@ def test_main_zip_field_rendering_config_grid_bounds_fallback(monkeypatch, pipel
     )
     monkeypatch.chdir(env["repo_root"])
 
-    with patch("src.main.render_fields_from_zip") as mock_render_fields:
+    from src.core.parser import parse_input_file as original_parse
+    def mock_parse(path, schema_path=None):
+        data = original_parse(path, schema_path=schema_path)
+        if "input_run.json" in str(path) and "inputs" in data:
+            data["inputs"].pop("grid", None)
+        return data
+
+    with patch("src.main.parse_input_file", side_effect=mock_parse), \
+         patch("src.main.render_fields_from_zip") as mock_render_fields:
         main()
         mock_render_fields.assert_called_once()
 
 
 def test_main_zip_field_rendering_no_grid_bounds_found_error(monkeypatch, pipeline_test_environment):
-    # We verify that a controlled exit occurs when both the 'grid' section in inputs
-    # and 'grid_bounds' in config.json are completely absent (covering lines 117-118).
+    # We verify that a controlled exit occurs when both 'grid' in inputs
+    # and 'grid_bounds' in config.json are absent (covering lines 117-118).
     env = pipeline_test_environment
     
-    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
-    payload["inputs"].pop("grid", None)
-    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
-
     config_file = env["repo_root"] / "config" / "config.json"
     config_data = json.loads(config_file.read_text(encoding="utf-8"))
     config_data.pop("grid_bounds", None)
@@ -237,7 +242,15 @@ def test_main_zip_field_rendering_no_grid_bounds_found_error(monkeypatch, pipeli
     )
     monkeypatch.chdir(env["repo_root"])
 
-    with pytest.raises(SystemExit) as exc_info:
+    from src.core.parser import parse_input_file as original_parse
+    def mock_parse(path, schema_path=None):
+        data = original_parse(path, schema_path=schema_path)
+        if "input_run.json" in str(path) and "inputs" in data:
+            data["inputs"].pop("grid", None)
+        return data
+
+    with patch("src.main.parse_input_file", side_effect=mock_parse), \
+         pytest.raises(SystemExit) as exc_info:
         main()
 
     assert exc_info.value.code == 1
