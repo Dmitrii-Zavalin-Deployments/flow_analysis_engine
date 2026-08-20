@@ -3,8 +3,8 @@ Literate Test Codex: Main Orchestration Script Validation
 ========================================================
 This test suite provides comprehensive narratives verifying CLI argument parsing,
 schema validation error handling, process execution failures, visualization warnings,
-missing inputs key protection, ZIP field rendering error pathways, config fallback 
-resolution, and output file write error handling in the main orchestration module,
+missing inputs key protection, ZIP field rendering error pathways, strict input-only
+grid resolution, and output file write error handling in the main orchestration module,
 leveraging the shared zero-mock pipeline test environment fixture.
 """
 
@@ -159,13 +159,12 @@ def test_main_visualization_rendering_warning(monkeypatch, pipeline_test_environ
     assert env["output_file"].exists()
 
 
-def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, pipeline_test_environment):
-    # We verify spatial limit resolution when grid_bounds is omitted from config.json.
+def test_main_zip_field_rendering_missing_grid_error(monkeypatch, pipeline_test_environment):
+    # We verify that a controlled exit occurs when 'grid' is absent from inputs during ZIP rendering.
     env = pipeline_test_environment
-    config_file = env["repo_root"] / "config" / "config.json"
-    config_data = json.loads(config_file.read_text(encoding="utf-8"))
-    config_data.pop("grid_bounds", None)
-    config_file.write_text(json.dumps(config_data), encoding="utf-8")
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    payload["inputs"].pop("grid", None)
+    env["input_file"].write_text(json.dumps(payload), encoding="utf-8")
 
     monkeypatch.setattr(
         sys,
@@ -179,78 +178,7 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, pipeline_tes
     )
     monkeypatch.chdir(env["repo_root"])
 
-    # The orchestrator falls back to inputs['grid'] bounds and calls render_fields_from_zip.
-    with patch("src.main.render_fields_from_zip") as mock_render_fields:
-        main()
-        mock_render_fields.assert_called_once()
-
-
-def test_main_zip_field_rendering_config_grid_bounds_fallback(monkeypatch, pipeline_test_environment):
-    # We verify spatial limit resolution when the 'grid' section is omitted from input payload,
-    # utilizing config.json's 'grid_bounds' by mocking parse_input_file to bypass strict schema checks.
-    env = pipeline_test_environment
-    
-    config_file = env["repo_root"] / "config" / "config.json"
-    config_data = json.loads(config_file.read_text(encoding="utf-8"))
-    config_data["grid_bounds"] = [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
-    config_file.write_text(json.dumps(config_data), encoding="utf-8")
-
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "main.py",
-            "--input_output_folder", str(env["input_dir"]),
-            "--input_file_name", "input_run.json",
-            "--output_file_name", "output_result.json"
-        ]
-    )
-    monkeypatch.chdir(env["repo_root"])
-
-    from src.core.parser import parse_input_file as original_parse
-    def mock_parse(path, schema_path=None):
-        data = original_parse(path, schema_path=schema_path)
-        if "input_run.json" in str(path) and "inputs" in data:
-            data["inputs"].pop("grid", None)
-        return data
-
-    with patch("src.main.parse_input_file", side_effect=mock_parse), \
-         patch("src.main.render_fields_from_zip") as mock_render_fields:
-        main()
-        mock_render_fields.assert_called_once()
-
-
-def test_main_zip_field_rendering_no_grid_bounds_found_error(monkeypatch, pipeline_test_environment):
-    # We verify that a controlled exit occurs when both 'grid' in inputs
-    # and 'grid_bounds' in config.json are absent (covering lines 117-118).
-    env = pipeline_test_environment
-    
-    config_file = env["repo_root"] / "config" / "config.json"
-    config_data = json.loads(config_file.read_text(encoding="utf-8"))
-    config_data.pop("grid_bounds", None)
-    config_file.write_text(json.dumps(config_data), encoding="utf-8")
-
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "main.py",
-            "--input_output_folder", str(env["input_dir"]),
-            "--input_file_name", "input_run.json",
-            "--output_file_name", "output_result.json"
-        ]
-    )
-    monkeypatch.chdir(env["repo_root"])
-
-    from src.core.parser import parse_input_file as original_parse
-    def mock_parse(path, schema_path=None):
-        data = original_parse(path, schema_path=schema_path)
-        if "input_run.json" in str(path) and "inputs" in data:
-            data["inputs"].pop("grid", None)
-        return data
-
-    with patch("src.main.parse_input_file", side_effect=mock_parse), \
-         pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(SystemExit) as exc_info:
         main()
 
     assert exc_info.value.code == 1

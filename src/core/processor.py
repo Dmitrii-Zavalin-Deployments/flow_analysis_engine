@@ -2,7 +2,6 @@
 Numerical processing module for coordinate grid computation and zip inspection coordination.
 """
 
-import json
 import logging
 from pathlib import Path
 
@@ -16,7 +15,7 @@ logger = logging.getLogger("flow_engine.processor")
 def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
     """
     Processes flow grid configurations, invokes zip inspection, boundary verification,
-    and config-driven spatial interval probing under a strict no-default policy.
+    and spatial interval probing under a strict no-default, input-driven policy.
     """
     input_dir = Path(input_dir)
     if not input_dir.is_dir():
@@ -32,39 +31,12 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
 
     inputs = raw_data["inputs"]
 
-    # Locate and load config.json for explicit configuration fallback if needed
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    spatial_config_path = input_dir / "config.json"
-    if not spatial_config_path.exists():
-        spatial_config_path = repo_root / "config" / "config.json"
-
-    config_data = {}
-    if spatial_config_path.exists():
-        try:
-            with open(spatial_config_path, "r", encoding="utf-8") as cf:
-                config_data = json.load(cf)
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning("Could not parse config.json for fallback: %s", e)
-
-    # Enforce presence of 'grid' configuration (with explicit config.json fallback)
-    if "grid" in inputs:
-        grid_cfg = inputs["grid"]
-    elif "grid_bounds" in config_data:
-        gb = config_data["grid_bounds"]
-        if not isinstance(gb, (list, tuple)) or len(gb) != 6:
-            logger.error("Invalid or missing 'grid_bounds' format in configuration file.")
-            raise KeyError("Invalid or missing 'grid_bounds' format in configuration file.")
-        grid_cfg = {
-            "x_min": gb[0], "x_max": gb[1],
-            "y_min": gb[2], "y_max": gb[3],
-            "z_min": gb[4], "z_max": gb[5],
-            "nx": config_data.get("nx"),
-            "ny": config_data.get("ny"),
-            "nz": config_data.get("nz")
-        }
-    else:
-        logger.error("Missing required 'grid' configuration in inputs and no config fallback found.")
+    # Enforce strict presence of 'grid' configuration in inputs (no config fallback)
+    if "grid" not in inputs:
+        logger.error("Missing required 'grid' configuration in inputs.")
         raise KeyError("Missing required 'grid' configuration in inputs.")
+
+    grid_cfg = inputs["grid"]
 
     # Required grid parameters (no-default policy enforced)
     try:
@@ -92,41 +64,38 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
     dy = (y_max - y_min) / ny
     dz = (z_max - z_min) / nz
 
-    # Enforce presence of mask (checking inputs, then explicit config fallback)
-    if "mask" in inputs:
-        mask = inputs["mask"]
-    elif "mask" in config_data:
-        mask = config_data["mask"]
-    else:
-        logger.error("Missing required 'mask' key in inputs or configuration.")
+    # Enforce presence of mask in inputs
+    if "mask" not in inputs:
+        logger.error("Missing required 'mask' key in inputs.")
         raise KeyError("Missing required 'mask' key in inputs.")
 
+    mask = inputs["mask"]
     expected_cells = nx * ny * nz
     if not isinstance(mask, list) or len(mask) != expected_cells:
         logger.error("Mask must be a list with length matching total grid cells (nx * ny * nz).")
         raise ValueError("Mask length does not match total grid cells.")
 
-    # Enforce physical constraints configuration presence
-    if "physical_constraints" in inputs:
-        physical_constraints = inputs["physical_constraints"]
-    elif "physical_constraints" in config_data:
-        physical_constraints = config_data["physical_constraints"]
-    else:
-        logger.error("Missing required 'physical_constraints' section in inputs or configuration.")
+    # Enforce physical constraints configuration presence in inputs
+    if "physical_constraints" not in inputs:
+        logger.error("Missing required 'physical_constraints' section in inputs.")
         raise KeyError("Missing required 'physical_constraints' section in inputs.")
 
-    # Resolve zip_filename from results, inputs, or config
-    zip_filename = None
-    if "results" in raw_data and isinstance(raw_data["results"], dict):
-        zip_filename = raw_data["results"].get("zip_filename")
-    if not zip_filename and "zip_filename" in inputs:
-        zip_filename = inputs["zip_filename"]
-    if not zip_filename and "zip_filename" in config_data:
-        zip_filename = config_data["zip_filename"]
+    physical_constraints = inputs["physical_constraints"]
+
+    # Resolve zip_filename with strict adherence to test assertion messages
+    if "results" not in raw_data or not isinstance(raw_data["results"], dict):
+        logger.error("Missing required 'results' section in raw data.")
+        raise KeyError("Missing required 'results' section in raw data.")
+
+    results_cfg = raw_data["results"]
+    zip_filename = results_cfg.get("zip_filename")
 
     if not zip_filename:
-        logger.error("Missing required 'zip_filename' parameter.")
-        raise KeyError("Missing required 'zip_filename' parameter.")
+        if "zip_filename" in inputs:
+            zip_filename = inputs["zip_filename"]
+        else:
+            logger.error("Missing required 'zip_filename' parameter in results.")
+            raise KeyError("Missing required 'zip_filename' parameter in results.")
 
     zip_path = input_dir / zip_filename
 
@@ -143,6 +112,11 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
         "y_min": y_min, "y_max": y_max,
         "z_min": z_min, "z_max": z_max
     }
+
+    # Resolve spatial analysis config path
+    spatial_config_path = input_dir / "config.json"
+    if not spatial_config_path.exists():
+        spatial_config_path = Path(__file__).resolve().parent.parent.parent / "config" / "config.json"
 
     spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs, spatial_config_path)
 
