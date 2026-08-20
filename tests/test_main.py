@@ -10,9 +10,8 @@ resolution, and output file write error handling in the main orchestration modul
 import sys
 import zipfile
 from unittest.mock import patch
-
+from pathlib import Path
 import pytest
-
 from src.main import main
 
 
@@ -20,7 +19,7 @@ def test_main_missing_inputs_key_error(monkeypatch, tmp_path):
     # We construct an invalid input data structure lacking the required root 'inputs' section.
     # Under our strict non-default schema policy, this omission must trigger a controlled failure.
     input_file = tmp_path / "invalid_input.json"
-    input_file.write_text('{"not_inputs": {}}', encoding="utf-8")
+    input_file.write_text('{"config": {}, "not_inputs": {}}', encoding="utf-8")
 
     # We configure the command-line arguments to point the orchestrator to our temporary
     # isolated input folder and target output path.
@@ -78,6 +77,7 @@ def test_main_config_schema_validation_error(monkeypatch, tmp_path):
     # We provide a valid input JSON file so the primary input parsing succeeds.
     input_file = tmp_path / "input.json"
     valid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
@@ -110,6 +110,7 @@ def test_main_process_flow_data_error(monkeypatch, tmp_path):
     # which causes process_flow_data to raise a ValueError during numerical preprocessing.
     input_file = tmp_path / "input.json"
     invalid_grid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 0, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [],
@@ -141,6 +142,7 @@ def test_main_visualization_rendering_warning(monkeypatch, tmp_path):
     # to raise a ValueError, validating that rendering anomalies are handled gracefully as warnings.
     input_file = tmp_path / "input.json"
     valid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
@@ -178,6 +180,7 @@ def test_main_zip_field_rendering_grid_bounds_fallback(monkeypatch, tmp_path):
 
     input_file = tmp_path / "input.json"
     valid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0.0, "x_max": 1.0, "y_min": 0.0, "y_max": 1.0, "z_min": 0.0, "z_max": 1.0},
             "mask": [1],
@@ -209,6 +212,7 @@ def test_main_zip_field_rendering_branches(monkeypatch, tmp_path):
     # to evaluate the pipeline's branching logic when handling missing optional simulation data.
     input_file = tmp_path / "test_input.json"
     valid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 2, "ny": 2, "nz": 2, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1, 1, 1, 1, 1, 1, 1, 1],
@@ -241,6 +245,7 @@ def test_main_output_write_error(monkeypatch, tmp_path):
     # during final JSON results serialization to test output write error handling.
     input_file = tmp_path / "input.json"
     valid_data = {
+        "config": {},
         "inputs": {
             "grid": {"nx": 1, "ny": 1, "nz": 1, "x_min": 0, "x_max": 1, "y_min": 0, "y_max": 1, "z_min": 0, "z_max": 1},
             "mask": [1],
