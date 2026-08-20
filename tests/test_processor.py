@@ -55,17 +55,41 @@ def test_process_flow_data_missing_grid(tmp_path):
 
 
 # ==============================================================================
-# Scenario 4: Handling Invalid or Missing Grid Parameters and Types
+# Scenario 4: Enforcing Presence of All Grid Parameters
 # ==============================================================================
-# If individual grid bounds or resolution fields are missing or malformed 
-# (e.g. non-numeric strings), parsing errors must be caught and raised.
+# If individual grid bounds or resolution parameters are missing from the grid
+# configuration dictionary, a KeyError must be caught and raised.
 
-def test_process_flow_data_invalid_grid_parameters(tmp_path):
-    # We omit required grid keys like 'ny', 'nz', etc., or provide bad types.
+def test_process_flow_data_missing_grid_parameter(tmp_path):
+    # We supply a grid configuration missing key required fields such as 'nz' and spatial bounds.
     raw_data = {
         "inputs": {
             "grid": {
-                "nx": "invalid_integer",  # Causes type conversion error
+                "nx": 10,
+                "ny": 10
+                # 'nz', 'x_min', 'x_max', 'y_min', 'y_max', 'z_min', 'z_max' are omitted
+            }
+        }
+    }
+
+    # We assert that a KeyError is raised for the missing grid key.
+    with pytest.raises(KeyError, match="Missing required grid parameter"):
+        process_flow_data(raw_data, tmp_path)
+
+
+# ==============================================================================
+# Scenario 5: Handling Invalid Grid Parameter Types and Values
+# ==============================================================================
+# If grid parameters are present but malformed (e.g., non-numeric strings),
+# type conversion errors must be caught and raised as ValueErrors.
+
+def test_process_flow_data_invalid_grid_parameter_values(tmp_path):
+    # We supply a non-convertible integer string for 'nx'.
+    raw_data = {
+        "inputs": {
+            "grid": {
+                "nx": "invalid_integer",  # Causes ValueError during int() conversion
+                "ny": 10, "nz": 10,
                 "x_min": 0.0, "x_max": 10.0,
                 "y_min": 0.0, "y_max": 10.0,
                 "z_min": 0.0, "z_max": 10.0
@@ -79,7 +103,7 @@ def test_process_flow_data_invalid_grid_parameters(tmp_path):
 
 
 # ==============================================================================
-# Scenario 5: Enforcing Positive Grid Dimensions
+# Scenario 6: Enforcing Positive Grid Dimensions
 # ==============================================================================
 # Grid dimensions (nx, ny, nz) must be strictly greater than zero. Zero or 
 # negative dimensions violate numerical discretization constraints.
@@ -102,7 +126,7 @@ def test_process_flow_data_non_positive_dimensions(tmp_path):
 
 
 # ==============================================================================
-# Scenario 6: Enforcing Mandatory Simulation Mask Key
+# Scenario 7: Enforcing Mandatory Simulation Mask Key
 # ==============================================================================
 # The input block must contain a cell selection mask for numerical processing.
 
@@ -124,7 +148,7 @@ def test_process_flow_data_missing_mask(tmp_path):
 
 
 # ==============================================================================
-# Scenario 7: Verifying Mask Length and Structure
+# Scenario 8: Verifying Mask Length and Structure
 # ==============================================================================
 # The provided mask list must match the total number of grid cells (nx * ny * nz).
 
@@ -147,7 +171,7 @@ def test_process_flow_data_invalid_mask_length(tmp_path):
 
 
 # ==============================================================================
-# Scenario 8: Enforcing Physical Constraints Configuration
+# Scenario 9: Enforcing Physical Constraints Configuration
 # ==============================================================================
 # Physical boundary conditions and constraint thresholds must be explicitly declared.
 
@@ -170,7 +194,7 @@ def test_process_flow_data_missing_constraints(tmp_path):
 
 
 # ==============================================================================
-# Scenario 9: Enforcing Zip Filename Presence
+# Scenario 10: Enforcing Zip Filename Presence
 # ==============================================================================
 # The processor requires an explicit target simulation archive filename with 
 # no auto-discovery or globbing fallbacks.
@@ -195,7 +219,7 @@ def test_process_flow_data_missing_zip_filename(tmp_path):
 
 
 # ==============================================================================
-# Scenario 10: Verifying Simulation Archive Existence
+# Scenario 11: Verifying Simulation Archive Existence
 # ==============================================================================
 # If the configured zip filename does not exist within the input directory,
 # a FileNotFoundError must be raised.
