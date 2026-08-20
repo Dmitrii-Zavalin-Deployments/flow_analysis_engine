@@ -4,3 +4,7 @@ matplotlib>=3.8.0
 plotly>=5.18.0
 jsonschema>=4.20.0
 pytest>=8.0.0
+pytest-cov>=4.0.0
+autoflake>=2.0.0
+ruff>=0.2.0
+vulture>=2.10.0
