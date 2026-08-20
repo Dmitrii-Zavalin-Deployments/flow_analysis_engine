@@ -7,6 +7,7 @@ step snapshot extraction, and Bernoulli boundary constraint verification.
 """
 
 import zipfile
+import io
 
 import numpy as np
 import pytest

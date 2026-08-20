@@ -8,6 +8,7 @@ NumPy array dimension transformations, and strict error resilience under the no-
 
 import json
 import zipfile
+import io
 
 import numpy as np
 import pytest
