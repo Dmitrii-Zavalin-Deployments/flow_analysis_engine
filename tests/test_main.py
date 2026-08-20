@@ -209,28 +209,6 @@ def test_main_zip_field_rendering_branches(monkeypatch, pipeline_test_environmen
     assert exc_info.value.code == 1
 
 
-def test_main_output_write_error(monkeypatch, pipeline_test_environment):
-    # We patch built-in open to raise an OSError during final JSON serialization 
-    # to confirm robust error handling when output file writing fails.
-    env = pipeline_test_environment
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "main.py",
-            "--input_output_folder", str(env["input_dir"]),
-            "--input_file_name", "input_run.json",
-            "--output_file_name", "output_result.json"
-        ]
-    )
-    monkeypatch.chdir(env["repo_root"])
-
-    with patch("builtins.open", side_effect=OSError("Disk write permission denied")), pytest.raises(SystemExit) as exc_info:
-        main()
-
-    assert exc_info.value.code == 1
-
-
 def test_main_missing_inputs_key_direct(monkeypatch, pipeline_test_environment):
     # When input data successfully passes initial parsing but programmatically 
     # omits the required 'inputs' root key, the engine raises a direct KeyError 
@@ -306,15 +284,15 @@ def test_main_output_file_write_os_error(monkeypatch, pipeline_test_environment)
     )
     monkeypatch.chdir(env["repo_root"])
 
-    # We target Path.open specifically for the output file path to raise OSError, 
+    # We target built-in open specifically for the output result file to raise OSError, 
     # allowing all preceding file reads and schema validations to execute normally.
-    original_path_open = Path.open
-    def mock_path_open(self, *args, **kwargs):
-        if "output_result.json" in str(self):
+    original_open = open
+    def mock_open(file, *args, **kwargs):
+        if "output_result.json" in str(file):
             raise OSError("Simulated disk write permission denied")
-        return original_path_open(self, *args, **kwargs)
+        return original_open(file, *args, **kwargs)
 
-    with patch.object(Path, "open", new=mock_path_open), pytest.raises(SystemExit) as exc_info:
+    with patch("builtins.open", side_effect=mock_open), pytest.raises(SystemExit) as exc_info:
         main()
 
     assert exc_info.value.code == 1
