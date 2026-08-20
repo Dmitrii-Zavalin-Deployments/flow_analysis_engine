@@ -227,3 +227,91 @@ def test_main_output_write_error(monkeypatch, pipeline_test_environment):
         main()
 
     assert exc_info.value.code == 1
+
+def test_main_missing_inputs_key_direct(monkeypatch, pipeline_test_environment):
+    # When input data successfully passes initial parsing but programmatically 
+    # omits the required 'inputs' root key, the engine raises a direct KeyError 
+    # to enforce strict structural requirements.
+    env = pipeline_test_environment
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    # We patch parse_input_file specifically for the input run file to return a payload lacking 'inputs'
+    from src.core.parser import parse_input_file as original_parse
+    def mock_parse(path, schema_path=None):
+        if "input_run.json" in str(path):
+            return {"results": {}}
+        return original_parse(path, schema_path=schema_path)
+
+    with patch("src.main.parse_input_file", side_effect=mock_parse), pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_zip_field_rendering_exception_handling(monkeypatch, pipeline_test_environment):
+    # When the configured ZIP archive exists but triggers an internal error (e.g., BadZipFile) 
+    # during field rendering, the orchestrator catches the exception, logs an error, and exits cleanly.
+    env = pipeline_test_environment
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    # We create a dummy file at the configured zip path so it passes the existence check 
+    # and invokes render_fields_from_zip, which we then mock to raise BadZipFile.
+    payload = json.loads(env["input_file"].read_text(encoding="utf-8"))
+    zip_file_path = env["input_dir"] / payload["inputs"]["zip_filename"]
+    zip_file_path.write_bytes(b"corrupted archive content")
+
+    with patch("src.main.render_fields_from_zip", side_effect=zipfile.BadZipFile("Invalid zip structure")), pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_output_file_write_os_error(monkeypatch, pipeline_test_environment):
+    # When all preprocessing, calculation, and rendering steps complete successfully, 
+    # but writing the final output JSON file encounters a disk write error (OSError), 
+    # the engine catches it and exits with code 1.
+    env = pipeline_test_environment
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--input_output_folder", str(env["input_dir"]),
+            "--input_file_name", "input_run.json",
+            "--output_file_name", "output_result.json"
+        ]
+    )
+    monkeypatch.chdir(env["repo_root"])
+
+    # We target Path.open specifically for the output file path to raise OSError, 
+    # allowing all preceding file reads and schema validations to execute normally.
+    original_path_open = Path.open
+    def mock_path_open(self, *args, **kwargs):
+        if "output_result.json" in str(self):
+            raise OSError("Simulated disk write permission denied")
+        return original_path_open(self, *args, **kwargs)
+
+    with patch.object(Path, "open", new=mock_path_open), pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1
