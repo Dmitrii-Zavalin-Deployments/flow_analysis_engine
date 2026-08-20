@@ -22,9 +22,8 @@ Purpose:
 import json
 import logging
 import zipfile
-from pathlib import Path
+
 import numpy as np
-import pytest
 
 from src.main import main
 
