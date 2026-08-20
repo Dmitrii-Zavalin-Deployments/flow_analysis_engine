@@ -90,13 +90,6 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
     zip_filename = inputs["zip_filename"]
     zip_path = input_dir / zip_filename
 
-    if not zip_path.exists():
-        logger.error("Configured ZIP archive does not exist at target path.")
-        raise FileNotFoundError(f"Configured ZIP archive not found: {zip_path}")
-
-    logger.info("Executing simulation ZIP inspection and spatial interval analysis.")
-    inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
-
     grid_specs = {
         "nx": nx, "ny": ny, "nz": nz,
         "x_min": x_min, "x_max": x_max,
@@ -104,13 +97,21 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
         "z_min": z_min, "z_max": z_max
     }
 
-    # Resolve config.json directly from input_dir or fallback to the repository's config/config.json
-    spatial_config_path = input_dir / "config.json"
-    if not spatial_config_path.exists():
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        spatial_config_path = repo_root / "config" / "config.json"
+    if not zip_path.exists():
+        logger.warning("Configured ZIP archive does not exist at target path: %s", zip_path)
+        inspection_results = {}
+        spatial_analysis = {}
+    else:
+        logger.info("Executing simulation ZIP inspection and spatial interval analysis.")
+        inspection_results = inspect_simulation_zip(zip_path, physical_constraints)
 
-    spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs, spatial_config_path)
+        # Resolve config.json directly from input_dir or fallback to the repository's config/config.json
+        spatial_config_path = input_dir / "config.json"
+        if not spatial_config_path.exists():
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            spatial_config_path = repo_root / "config" / "config.json"
+
+        spatial_analysis = analyze_spatial_intervals(zip_path, grid_specs, spatial_config_path)
 
     processed_results = {
         "status": "success",
