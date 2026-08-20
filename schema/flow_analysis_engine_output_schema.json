@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Simulation Results Schema",
+  "description": "Schema for validating the execution results, grid parameters, mask arrays, and Navier-Stokes summary metrics.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Execution status of the simulation pipeline"
+    },
+    "grid": {
+      "type": "object",
+      "properties": {
+        "nx": { "type": "integer", "minimum": 1 },
+        "ny": { "type": "integer", "minimum": 1 },
+        "nz": { "type": "integer", "minimum": 1 },
+        "x_min": { "type": "number" },
+        "x_max": { "type": "number" },
+        "y_min": { "type": "number" },
+        "y_max": { "type": "number" },
+        "z_min": { "type": "number" },
+        "z_max": { "type": "number" },
+        "dx": { "type": "number", "exclusiveMinimum": 0 },
+        "dy": { "type": "number", "exclusiveMinimum": 0 },
+        "dz": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "required": ["nx", "ny", "nz", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "dx", "dy", "dz"],
+      "additionalProperties": false
+    },
+    "mask": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Flat list representing 3D cell classifications (-1 for wall, 0 for solid, 1 for fluid)"
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "grid_resolution": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "total_cells": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["grid_resolution", "total_cells"],
+      "additionalProperties": false
+    },
+    "archive_name": {
+      "type": "string",
+      "description": "Filename of the generated ZIP container"
+    },
+    "navier_stokes_summary": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "shape": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "mean": { "type": "number" },
+          "non_zero_count": { "type": "integer" },
+          "total_size": { "type": "integer" },
+          "non_zero_ratio": { "type": "number" }
+        },
+        "required": ["shape", "min", "max", "mean", "non_zero_count", "total_size", "non_zero_ratio"],
+        "additionalProperties": false
+      }
+    },
+    "targeted_step_snapshots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "number" }
+      }
+    },
+    "bernoulli_boundary_check": {
+      "type": "object",
+      "properties": {
+        "verified": { "type": "boolean" },
+        "details": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["verified", "details"],
+      "additionalProperties": false
+    },
+    "spatial_interval_analysis": {
+      "type": "object",
+      "properties": {
+        "coordinate_bounds": {
+          "type": "object",
+          "properties": {
+            "x_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            "y_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            "z_range": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          },
+          "required": ["x_range", "y_range", "z_range"],
+          "additionalProperties": false
+        },
+        "index_slices": {
+          "type": "object",
+          "properties": {
+            "i": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+            "j": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+            "k": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 }
+          },
+          "required": ["i", "j", "k"],
+          "additionalProperties": false
+        },
+        "field_interval_statistics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "mean": { "type": "number" },
+              "active_cells": { "type": "integer" }
+            },
+            "required": ["min", "max", "mean", "active_cells"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["coordinate_bounds", "index_slices", "field_interval_statistics"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "status",
+    "grid",
+    "mask",
+    "metrics",
+    "archive_name",
+    "navier_stokes_summary",
+    "targeted_step_snapshots",
+    "bernoulli_boundary_check",
+    "spatial_interval_analysis"
+  ],
+  "additionalProperties": false
+}

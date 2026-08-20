@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Spatial Configuration Schema",
+  "description": "Schema for validating spatial coordinate ranges in config.json",
+  "type": "object",
+  "properties": {
+    "x_range": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Minimum and maximum X coordinate range [x_min, x_max]"
+    },
+    "y_range": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Minimum and maximum Y coordinate range [y_min, y_max]"
+    },
+    "z_range": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Minimum and maximum Z coordinate range [z_min, z_max]"
+    }
+  },
+  "required": [
+    "x_range",
+    "y_range",
+    "z_range"
+  ],
+  "additionalProperties": false
+}
