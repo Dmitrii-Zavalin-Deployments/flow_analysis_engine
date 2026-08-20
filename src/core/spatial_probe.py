@@ -111,7 +111,8 @@ def analyze_spatial_intervals(
 
         for name in npy_files:
             with archive.open(name) as f:
-                arr = np.load(io.BytesIO(f.read()))
+                # Added allow_pickle=True for numpy 2.x compatibility
+                arr = np.load(io.BytesIO(f.read()), allow_pickle=True)
 
                 if arr.ndim == 1:
                     arr = arr.reshape((nx, ny, nz), order="F")
