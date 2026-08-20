@@ -8,6 +8,7 @@ import argparse
 import json
 import logging
 import sys
+import zipfile
 from pathlib import Path
 
 from src.core.parser import parse_input_file
@@ -19,7 +20,7 @@ from src.visualization.zip_field_renderer import render_fields_from_zip
 logger = logging.getLogger("flow_engine.main")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Flow Analysis & Visualization Engine CLI")
     parser.add_argument(
         "--input_output_folder",
@@ -51,7 +52,7 @@ def main():
     try:
         raw_data = parse_input_file(input_path)
         logger.info("Successfully parsed and validated input data.")
-    except Exception as e:  # noqa: BLE001
+    except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as e:
         logger.error("Error validating input file against schema: %s", e)
         sys.exit(1)
 
@@ -59,7 +60,7 @@ def main():
     try:
         processed_results = process_flow_data(raw_data, input_dir=input_dir)
         logger.info("Successfully executed flow processing and spatial probing.")
-    except Exception as e:  # noqa: BLE001
+    except (FileNotFoundError, ValueError, KeyError, OSError) as e:
         logger.error("Error during flow processing: %s", e)
         sys.exit(1)
 
@@ -67,14 +68,15 @@ def main():
     try:
         render_visualization(raw_data, processed_results, output_dir=input_dir)
         logger.info("Voxel visualization rendered successfully.")
-    except Exception as e:  # noqa: BLE001
+    except (ValueError, OSError, RuntimeError) as e:
         logger.warning("Voxel visualization rendering encountered an issue: %s", e)
 
-    # In-memory ZIP field rendering for simulation .npy results
-    zip_filename = (
-        raw_data.get("inputs", raw_data).get("zip_filename")
-        or raw_data.get("zip_filename")
-    )
+    # In-memory ZIP field rendering for simulation .npy results (No-default policy enforced)
+    inputs_dict = raw_data.get("inputs")
+    if inputs_dict is None:
+        raise KeyError("Required 'inputs' section is missing from input data.")
+    
+    zip_filename = inputs_dict.get("zip_filename")
     if zip_filename:
         zip_path = input_dir / zip_filename
         if zip_path.exists():
@@ -82,7 +84,7 @@ def main():
             try:
                 render_fields_from_zip(zip_path, output_dir=input_dir)
                 logger.info("ZIP field rendering completed successfully.")
-            except Exception as e:  # noqa: BLE001
+            except (FileNotFoundError, zipfile.BadZipFile, OSError, ValueError) as e:
                 logger.warning("ZIP field rendering encountered an issue: %s", e)
         else:
             logger.warning("Configured zip archive path does not exist.")
@@ -98,7 +100,7 @@ def main():
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(final_output, f, indent=2)
         logger.info("Successfully wrote final output file.")
-    except Exception as e:  # noqa: BLE001
+    except (OSError, TypeError, ValueError) as e:
         logger.error("Error writing output file: %s", e)
         sys.exit(1)
 

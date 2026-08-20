@@ -5,6 +5,7 @@ them to disk, generating 3D colormapped voxel visualizations with black borders.
 """
 
 import io
+import logging
 import zipfile
 from pathlib import Path
 
@@ -14,7 +15,9 @@ matplotlib.use("Agg")  # Non-interactive headless backend
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
+
+# Configure structured module logger
+logger = logging.getLogger("flow_engine.zip_field_renderer")
 
 
 def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarray:
@@ -38,34 +41,40 @@ def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarra
 
 
 def render_fields_from_zip(
-    zip_path: str | Path,
-    output_dir: str | Path,
-    grid_bounds: tuple[float, float, float, float, float, float] = (0.0, 3.0, 0.0, 3.0, 0.0, 3.0),
+    zip_path: Path | str,
+    output_dir: Path | str,
+    grid_bounds: tuple[float, float, float, float, float, float],
     colormap_name: str = "viridis"
 ) -> list[Path]:
     """
     Inspects a ZIP file, reads all contained .npy field files in-memory,
-    and generates matching 3D voxel colormap PNG images.
+    and generates matching 3D voxel colormap PNG images under a strict no-default policy.
     """
     zip_path = Path(zip_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if grid_bounds is None:
+        logger.error("Grid bounds configuration was not provided (no-default policy enforced).")
+        raise ValueError("Grid bounds must be explicitly provided.")
+
     x_min, x_max, y_min, y_max, z_min, z_max = grid_bounds
     generated_pngs: list[Path] = []
 
-    if not zip_path.exists():
+    if not zip_path.is_file():
+        logger.error("Target ZIP archive not found at target path: %s", zip_path)
         raise FileNotFoundError(f"Target ZIP archive not found: {zip_path}")
 
+    logger.info("Opening ZIP archive for in-memory field rendering: %s", zip_path.name)
     with zipfile.ZipFile(zip_path, "r") as archive:
         # Filter for .npy array files
         npy_files = [f for f in archive.namelist() if f.endswith(".npy")]
-        
+
         if not npy_files:
-            print(f"⚠ No .npy files found inside {zip_path.name}")
+            logger.warning("No .npy files found inside ZIP archive: %s", zip_path.name)
             return generated_pngs
 
-        print(f"📦 Found {len(npy_files)} field file(s) inside {zip_path.name}")
+        logger.info("Found %d field file(s) inside %s", len(npy_files), zip_path.name)
 
         for file_name in npy_files:
             # Read .npy array directly from memory without extracting to disk
@@ -77,7 +86,6 @@ def render_fields_from_zip(
             if field_array.ndim == 3:
                 nx, ny, nz = field_array.shape
             else:
-                # Default to cube grid root calculation
                 total_elements = field_array.shape[0] if field_array.ndim == 1 else field_array.size
                 n_side = round(total_elements ** (1 / 3))
                 nx, ny, nz = n_side, n_side, n_side
@@ -97,7 +105,7 @@ def render_fields_from_zip(
                 vmax = vmin + 1e-6
 
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-            cmap = cm.get_cmap(colormap_name)
+            cmap = matplotlib.colormaps[colormap_name]
             colors = cmap(norm(scalar_field))
             colors[..., 3] = 0.75  # Set alpha transparency (75% opaque)
 
@@ -126,7 +134,7 @@ def render_fields_from_zip(
             ax.set_zlabel("Z Coordinate", labelpad=10)
 
             # Add Colorbar matching the scalar field magnitude
-            mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
+            mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
             mappable.set_array(scalar_field)
             cbar = fig.colorbar(mappable, ax=ax, shrink=0.65, aspect=12, pad=0.1)
             cbar.set_label("Field Magnitude / Value", rotation=270, labelpad=18, fontweight="bold")
@@ -137,18 +145,7 @@ def render_fields_from_zip(
             plt.savefig(output_path, dpi=150, bbox_inches="tight", pad_inches=0.3)
             plt.close(fig)
 
-            print(f"🖼 Generated 3D field snapshot: {output_path.name}")
+            logger.info("Generated 3D field snapshot: %s", output_path.name)
             generated_pngs.append(output_path)
 
     return generated_pngs
-
-
-if __name__ == "__main__":
-    # Example execution entrypoint
-    target_zip = Path("20260817_231059.zip")
-    output_directory = Path("rendered_zip_fields")
-
-    if target_zip.exists():
-        render_fields_from_zip(target_zip, output_directory)
-    else:
-        print(f"Please provide a valid zip archive path. ({target_zip} not found)")

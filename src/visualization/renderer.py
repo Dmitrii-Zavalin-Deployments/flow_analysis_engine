@@ -3,6 +3,7 @@ Headless rendering and visualization module using matplotlib (Agg backend)
 to generate diagnostic 3D voxel mask snapshots for the flow analysis engine.
 """
 
+import logging
 from pathlib import Path
 
 import matplotlib
@@ -11,6 +12,9 @@ matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+
+# Configure structured module logger
+logger = logging.getLogger("flow_engine.renderer")
 
 
 def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
@@ -26,47 +30,82 @@ def get_coords_from_index(index: int, nx: int, ny: int) -> tuple[int, int, int]:
     return i, j, k
 
 
-def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path) -> None:
+def render_visualization(raw_data: dict, processed_results: dict, output_dir: Path | str) -> None:
     """
-    Generates 3D voxel mask visualization with crisp black perimeter and cell edge lines:
-    - Domain wireframe and active 3D cubes use sharp black/dark edge lines.
-    - Fluid (1) & Wall (-1): Rendered as active, 3D translucent cubes.
+    Generates 3D voxel mask visualization with crisp black perimeter and cell edge lines
+    under a strict no-default policy.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    inputs = raw_data.get("inputs", raw_data)
-    grid_cfg = inputs.get("grid", {})
-    nx = int(grid_cfg.get("nx", 3))
-    ny = int(grid_cfg.get("ny", 3))
-    nz = int(grid_cfg.get("nz", 3))
-    
-    x_min, x_max = float(grid_cfg.get("x_min", 0.0)), float(grid_cfg.get("x_max", 3.0))
-    y_min, y_max = float(grid_cfg.get("y_min", 0.0)), float(grid_cfg.get("y_max", 3.0))
-    z_min, z_max = float(grid_cfg.get("z_min", 0.0)), float(grid_cfg.get("z_max", 3.0))
+    logger.info("Initializing 3D voxel mask and mesh rendering pipeline.")
 
-    mask = processed_results.get("mask", inputs.get("mask", [0] * (nx * ny * nz)))
+    # No-default policy: Enforce presence of 'inputs' and 'grid'
+    if "inputs" not in raw_data:
+        logger.error("Missing required 'inputs' section in raw data.")
+        raise KeyError("Missing required 'inputs' section in raw data.")
+
+    inputs = raw_data["inputs"]
+    if "grid" not in inputs:
+        logger.error("Missing required 'grid' configuration in inputs.")
+        raise KeyError("Missing required 'grid' configuration in inputs.")
+
+    grid_cfg = inputs["grid"]
+
+    try:
+        nx = int(grid_cfg["nx"])
+        ny = int(grid_cfg["ny"])
+        nz = int(grid_cfg["nz"])
+        x_min = float(grid_cfg["x_min"])
+        x_max = float(grid_cfg["x_max"])
+        y_min = float(grid_cfg["y_min"])
+        y_max = float(grid_cfg["y_max"])
+        z_min = float(grid_cfg["z_min"])
+        z_max = float(grid_cfg["z_max"])
+    except KeyError as e:
+        logger.error("Missing required grid parameter for rendering: %s", e)
+        raise KeyError(f"Missing required grid parameter: {e}") from e
+    except (ValueError, TypeError) as e:
+        logger.error("Invalid type or value for grid parameters during rendering: %s", e)
+        raise ValueError(f"Invalid grid parameter value: {e}") from e
+
+    if nx <= 0 or ny <= 0 or nz <= 0:
+        logger.error("Grid dimensions (nx, ny, nz) must be strictly greater than zero.")
+        raise ValueError("Grid dimensions (nx, ny, nz) must be strictly greater than zero.")
+
+    # Retrieve mask from processed_results or inputs (no-default policy)
+    if "mask" in processed_results:
+        mask = processed_results["mask"]
+    elif "mask" in inputs:
+        mask = inputs["mask"]
+    else:
+        logger.error("Missing required 'mask' data for rendering.")
+        raise KeyError("Missing required 'mask' data for rendering.")
+
+    expected_cells = nx * ny * nz
+    if not isinstance(mask, list) or len(mask) != expected_cells:
+        logger.error("Mask must be a list with length matching total grid cells.")
+        raise ValueError("Mask length does not match total grid cells.")
 
     # Voxel matrices for fluid / wall cells
     voxels = np.zeros((nx, ny, nz), dtype=bool)
     colors = np.empty((nx, ny, nz, 4), dtype=float)
 
     # Color Definitions:
-    COLOR_FLUID = np.array([0.12, 0.53, 1.00, 0.65])   # Vibrant transparent blue
-    COLOR_WALL  = np.array([0.02, 0.02, 0.15, 0.85])   # Near-black dark blue
-    COLOR_SOLID_LEGEND = np.array([0.85, 0.85, 0.85, 0.20])
+    color_fluid = np.array([0.12, 0.53, 1.00, 0.65])   # Vibrant transparent blue
+    color_wall  = np.array([0.02, 0.02, 0.15, 0.85])   # Near-black dark blue
+    color_solid_legend = np.array([0.85, 0.85, 0.85, 0.20])
 
-    total_cells = nx * ny * nz
-    for idx in range(min(len(mask), total_cells)):
+    for idx in range(min(len(mask), expected_cells)):
         i, j, k = get_coords_from_index(idx, nx, ny)
         val = mask[idx]
 
         if val == 1:
             voxels[i, j, k] = True
-            colors[i, j, k] = COLOR_FLUID
+            colors[i, j, k] = color_fluid
         elif val == -1:
             voxels[i, j, k] = True
-            colors[i, j, k] = COLOR_WALL
+            colors[i, j, k] = color_wall
         else:
             voxels[i, j, k] = False
 
@@ -109,16 +148,16 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     ax.set_zlabel("Z Coordinate", labelpad=12)
 
     legend_handles = [
-        mpatches.Patch(color=COLOR_SOLID_LEGEND, label="Solid Obstacle (val=0) [Wireframe]"),
-        mpatches.Patch(color=COLOR_FLUID, label="Fluid Cell (val=1) [3D Cube]"),
-        mpatches.Patch(color=COLOR_WALL, label="Wall / Border (val=-1)")
+        mpatches.Patch(color=color_solid_legend, label="Solid Obstacle (val=0) [Wireframe]"),
+        mpatches.Patch(color=color_fluid, label="Fluid Cell (val=1) [3D Cube]"),
+        mpatches.Patch(color=color_wall, label="Wall / Border (val=-1)")
     ]
     ax.legend(handles=legend_handles, loc="upper right")
 
     voxel_path = output_dir / "voxel_mask_verification.png"
     plt.savefig(voxel_path, dpi=150, bbox_inches="tight", pad_inches=0.4)
     plt.close(fig)
-    print(f"🖼 Generated 3D Voxel Verification: {voxel_path}")
+    logger.info("Generated 3D Voxel Verification snapshot: %s", voxel_path.name)
 
     # 2. Render Mesh Snapshot
     fig = plt.figure(figsize=(6, 6))
@@ -131,7 +170,7 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     mesh_path = output_dir / "mesh_snapshot.png"
     plt.savefig(mesh_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"🖼 Generated Mesh Snapshot: {mesh_path}")
+    logger.info("Generated Mesh Snapshot: %s", mesh_path.name)
 
     # 3. Generate step_snapshot.png (CAD geometry view)
     fig = plt.figure(figsize=(6, 6))
@@ -149,3 +188,4 @@ def render_visualization(raw_data: dict, processed_results: dict, output_dir: Pa
     step_path = output_dir / "step_snapshot.png"
     plt.savefig(step_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
+    logger.info("Generated STEP Geometry Snapshot: %s", step_path.name)
