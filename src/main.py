@@ -11,6 +11,9 @@ import sys
 import zipfile
 from pathlib import Path
 
+# Configure root logger to output INFO-level logs to stderr
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
 from src.core.parser import parse_input_file
 from src.core.processor import process_flow_data
 from src.visualization.renderer import render_visualization
@@ -95,7 +98,7 @@ def main() -> None:
     inputs_dict = raw_data.get("inputs")
     if inputs_dict is None:
         raise KeyError("Required 'inputs' section is missing from input data.")
-     
+
     zip_filename = inputs_dict.get("zip_filename")
     if zip_filename:
         zip_path = input_dir / zip_filename
