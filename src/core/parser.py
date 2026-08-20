@@ -16,6 +16,7 @@ def parse_input_file(input_path: Path, schema_path: Path) -> dict:
     Loads, parses, and validates the input JSON file against the JSON schema.
     Adheres to the no-default policy: both input and schema paths must be explicitly provided.
     """
+    logger.info("Initializing input parsing and schema validation module.")
     input_path = Path(input_path)
     if not input_path.is_file():
         logger.error("Input path is not a valid file.")
