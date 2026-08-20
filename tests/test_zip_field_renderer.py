@@ -168,3 +168,40 @@ def test_render_fields_non_3d_array_inference(tmp_path):
     # Verifying that the snapshot was successfully generated
     assert len(pngs) == 1
     assert pngs[0].name == "field_2d_3d_verification.png"
+
+
+# ==============================================================================
+# Scenario 9: Edge Case Normalization Branches (Line 33, 36, 43, 46 Coverage)
+# ==============================================================================
+# We test specific array normalization pathways to guarantee complete code coverage.
+
+def test_process_field_data_resize_fallback():
+    # When data dimensions are neither 3D nor 4D and total size does not match nx*ny*nz,
+    # process_field_data invokes np.resize to force dimensions (Line 33).
+    data_1d = np.ones(5, dtype=float)
+    resized = process_field_data(data_1d, 2, 2, 2)
+    assert resized.shape == (2, 2, 2)
+
+
+def test_process_field_data_3d_reshape_f():
+    # When data is 3D with a mismatched shape but matching total element count,
+    # it is reshaped using Fortran-style ordering (Line 36).
+    data_3d = np.arange(8, dtype=float).reshape((1, 8, 1))
+    reshaped = process_field_data(data_3d, 2, 2, 2)
+    assert reshaped.shape == (2, 2, 2)
+
+
+def test_process_field_data_4d_unmatched_axis_fallback():
+    # When a 4D array does not match standard component layouts (axis 0 or last axis == 3),
+    # it falls back to the inner ternary condition computing norm along axis=0 (Line 43).
+    data_4d = np.ones((2, 2, 2, 2), dtype=float)
+    result = process_field_data(data_4d, 2, 2, 2)
+    assert result.shape == (2, 2, 2)
+
+
+def test_process_field_data_4d_norm_reshape():
+    # When a 4D vector field norm produces an intermediate shape with matching total size
+    # but differing dimensions, it is reshaped using Fortran order (Line 46).
+    data_4d = np.ones((3, 1, 4, 2), dtype=float)
+    result = process_field_data(data_4d, 2, 2, 2)
+    assert result.shape == (2, 2, 2)
