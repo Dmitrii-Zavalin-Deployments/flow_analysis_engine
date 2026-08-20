@@ -26,7 +26,6 @@ def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarra
     Normalizes field data dimensions and handles vector fields (e.g. [u, v, w]) 
     and non-3D arrays. Returns a 3D scalar array of shape (nx, ny, nz).
     """
-    # 1. Handle flat 1D or arbitrary dimension arrays by reshaping if size matches
     if data.ndim != 3 and data.ndim != 4:
         if data.size == nx * ny * nz:
             data = data.reshape((nx, ny, nz), order="F")
@@ -35,7 +34,6 @@ def process_field_data(data: np.ndarray, nx: int, ny: int, nz: int) -> np.ndarra
     elif data.ndim == 3:
         if data.shape != (nx, ny, nz) and data.size == nx * ny * nz:
             data = data.reshape((nx, ny, nz), order="F")
-    # 2. Handle 4D vector fields (e.g. velocity magnitude calculation)
     elif data.ndim == 4:
         if data.shape[0] == 3 and data.shape[1] == nx:
             data = np.linalg.norm(data, axis=0)
@@ -67,12 +65,7 @@ def render_fields_from_zip(
 
     if grid_bounds is None:
         logger.info("Loading grid_bounds from config.json under config-driven policy.")
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        
-        # Prioritize output_dir / "config.json", then fall back to repository root config
         config_path = output_dir / "config.json"
-        if not config_path.exists():
-            config_path = repo_root / "config" / "config.json"
 
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file for grid_bounds not found at: {config_path}")
@@ -95,7 +88,6 @@ def render_fields_from_zip(
 
     logger.info("Opening ZIP archive for in-memory field rendering: %s", zip_path.name)
     with zipfile.ZipFile(zip_path, "r") as archive:
-        # Filter for .npy array files
         npy_files = [f for f in archive.namelist() if f.endswith(".npy")]
 
         if not npy_files:
@@ -105,11 +97,9 @@ def render_fields_from_zip(
         logger.info("Found %d field file(s) inside %s", len(npy_files), zip_path.name)
 
         for file_name in npy_files:
-            # Read .npy array directly from memory without extracting to disk
             with archive.open(file_name) as npy_stream:
                 field_array = np.load(io.BytesIO(npy_stream.read()), allow_pickle=True)
 
-            # Determine grid shape from array size or shape
             if field_array.ndim == 3:
                 nx, ny, nz = field_array.shape
             else:
@@ -119,24 +109,20 @@ def render_fields_from_zip(
 
             scalar_field = process_field_data(field_array, nx, ny, nz)
 
-            # Setup meshgrid boundaries
             x_edges = np.linspace(x_min, x_max, nx + 1)
             y_edges = np.linspace(y_min, y_max, ny + 1)
             z_edges = np.linspace(z_min, z_max, nz + 1)
             X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing="ij")
 
-            # Map cell field values to RGBA colors
             vmin, vmax = float(np.min(scalar_field)), float(np.max(scalar_field))
-            # Avoid division by zero for uniform fields
             if np.isclose(vmin, vmax):
                 vmax = vmin + 1e-6
 
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             cmap = matplotlib.colormaps[colormap_name]
             colors = cmap(norm(scalar_field))
-            colors[..., 3] = 0.75  # Set alpha transparency (75% opaque)
+            colors[..., 3] = 0.75
 
-            # Render 3D Voxel Field Plot
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection="3d")
 
@@ -145,11 +131,10 @@ def render_fields_from_zip(
             ax.voxels(
                 X, Y, Z, filled_voxels,
                 facecolors=colors,
-                edgecolors="k",  # Black border lines for maximum cell definition
+                edgecolors="k",
                 linewidth=0.6
             )
 
-            # Set domain constraints and display formatting
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min, y_max)
             ax.set_zlim(z_min, z_max)
@@ -160,13 +145,11 @@ def render_fields_from_zip(
             ax.set_ylabel("Y Coordinate", labelpad=8)
             ax.set_zlabel("Z Coordinate", labelpad=10)
 
-            # Add Colorbar matching the scalar field magnitude
             mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
             mappable.set_array(scalar_field)
             cbar = fig.colorbar(mappable, ax=ax, shrink=0.65, aspect=12, pad=0.1)
             cbar.set_label("Field Magnitude / Value", rotation=270, labelpad=18, fontweight="bold")
 
-            # Save PNG snapshot
             output_png_name = f"{display_title}_3d_verification.png"
             output_path = output_dir / output_png_name
             plt.savefig(output_path, dpi=150, bbox_inches="tight", pad_inches=0.3)
