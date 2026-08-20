@@ -43,7 +43,12 @@ def parse_input_file(input_path: Path, schema_path: Path) -> dict:
     logger.info("Validating input data against the provided JSON schema.")
     with open(schema_path, "r", encoding="utf-8") as sf:
         schema_data = json.load(sf)
-        jsonschema.validate(instance=data, schema=schema_data)
+        try:
+            jsonschema.validate(instance=data, schema=schema_data)
+        except jsonschema.exceptions.ValidationError as e:
+            error_path = " -> ".join(str(p) for p in e.path) if e.path else "root"
+            logger.error(f"Schema validation failed at [{error_path}]: {e.message}")
+            raise ValueError(f"Invalid configuration schema: {e.message} (path: {error_path})") from None
 
     logger.info("Input file parsed and validated successfully.")
     return data
