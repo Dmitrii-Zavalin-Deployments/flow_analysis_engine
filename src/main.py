@@ -44,13 +44,33 @@ def main() -> None:
     input_path = input_dir / args.input_file_name
     output_path = input_dir / args.output_file_name
 
+    repo_root = Path(__file__).resolve().parent.parent
+    schema_dir = repo_root / "schema"
+
+    # Optional configuration validation against flow_analysis_engine_config_schema.json
+    config_path = repo_root / "config" / "config.json"
+    config_schema_path = schema_dir / "flow_analysis_engine_config_schema.json"
+    if config_path.exists() and config_schema_path.exists():
+        logger.info("Initializing configuration parsing and schema validation.")
+        try:
+            parse_input_file(config_path, schema_path=config_schema_path)
+            logger.info("Configuration file validated successfully.")
+        except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as e:
+            logger.error("Error validating config file against schema: %s", e)
+            sys.exit(1)
+
     if not input_path.exists():
         logger.error("Input file not found at target path.")
         sys.exit(1)
 
     logger.info("Initializing input parsing and schema validation module.")
     try:
-        raw_data = parse_input_file(input_path)
+        # Resolve schema path supporting both local test overrides and standard global schema directory
+        schema_path = input_dir / "schema.json"
+        if not schema_path.exists():
+            schema_path = schema_dir / "flow_analysis_engine_input_schema.json"
+
+        raw_data = parse_input_file(input_path, schema_path=schema_path)
         logger.info("Successfully parsed and validated input data.")
     except (FileNotFoundError, ValueError, json.JSONDecodeError, OSError) as e:
         logger.error("Error validating input file against schema: %s", e)
@@ -75,7 +95,7 @@ def main() -> None:
     inputs_dict = raw_data.get("inputs")
     if inputs_dict is None:
         raise KeyError("Required 'inputs' section is missing from input data.")
-    
+     
     zip_filename = inputs_dict.get("zip_filename")
     if zip_filename:
         zip_path = input_dir / zip_filename

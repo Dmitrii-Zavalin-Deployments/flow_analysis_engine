@@ -5,7 +5,6 @@ import zipfile
 import numpy as np
 import pytest
 
-import src.core.parser
 import src.core.spatial_probe
 import src.visualization.zip_field_renderer
 
@@ -16,18 +15,6 @@ def setup_module_signature_defaults(tmp_path):
     Provides default file paths and parameters for core sub-modules where
     main.py invokes functions under strict no-default policies.
     """
-    # Define a default JSON schema for input validation
-    schema_path = tmp_path / "schema.json"
-    schema_data = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "properties": {
-            "inputs": {"type": "object"}
-        },
-        "required": ["inputs"]
-    }
-    schema_path.write_text(json.dumps(schema_data), encoding="utf-8")
-
     # Define a default spatial probe coordinate range configuration
     spatial_cfg_path = tmp_path / "spatial_config.json"
     spatial_cfg_data = {
@@ -37,12 +24,8 @@ def setup_module_signature_defaults(tmp_path):
     }
     spatial_cfg_path.write_text(json.dumps(spatial_cfg_data), encoding="utf-8")
 
-    orig_parse = src.core.parser.parse_input_file
     orig_spatial = src.core.spatial_probe.analyze_spatial_intervals
     orig_zip_render = src.visualization.zip_field_renderer.render_fields_from_zip
-
-    def patched_parse(input_path, schema_p=schema_path):
-        return orig_parse(input_path, schema_p)
 
     def patched_spatial(zip_path, grid_cfg, config_p=spatial_cfg_path):
         return orig_spatial(zip_path, grid_cfg, config_p)
@@ -50,13 +33,11 @@ def setup_module_signature_defaults(tmp_path):
     def patched_zip_render(zip_p, output_dir, grid_bounds=(0.0, 10.0, 0.0, 10.0, 0.0, 10.0), colormap_name="viridis"):
         return orig_zip_render(zip_p, output_dir, grid_bounds, colormap_name)
 
-    src.core.parser.parse_input_file = patched_parse
     src.core.spatial_probe.analyze_spatial_intervals = patched_spatial
     src.visualization.zip_field_renderer.render_fields_from_zip = patched_zip_render
 
     yield
 
-    src.core.parser.parse_input_file = orig_parse
     src.core.spatial_probe.analyze_spatial_intervals = orig_spatial
     src.visualization.zip_field_renderer.render_fields_from_zip = orig_zip_render
 
@@ -64,8 +45,8 @@ def setup_module_signature_defaults(tmp_path):
 @pytest.fixture
 def testing_environment(tmp_path):
     """
-    Prepares input/output test environment with input JSON configurations
-    and in-memory NumPy binary simulation archives.
+    Prepares input/output test environment with input JSON configurations,
+    schema definition, and in-memory NumPy binary simulation archives.
     """
     input_dir = tmp_path / "testing-input-output"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -73,6 +54,18 @@ def testing_environment(tmp_path):
     input_file_name = "flow_analysis_engine_input.json"
     output_file_name = "flow_analysis_output.json"
     zip_file_name = "simulation_data.zip"
+
+    # Write schema.json directly into input_dir for subprocess accessibility
+    schema_path = input_dir / "schema.json"
+    schema_data = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+            "inputs": {"type": "object"}
+        },
+        "required": ["inputs"]
+    }
+    schema_path.write_text(json.dumps(schema_data, indent=2), encoding="utf-8")
 
     # Create 3D float arrays for velocity (u) and pressure (p)
     grid_dim = (2, 2, 2)
