@@ -96,7 +96,7 @@ def render_fields_from_zip(
         for file_name in npy_files:
             # Read .npy array directly from memory without extracting to disk
             with archive.open(file_name) as npy_stream:
-                field_array = np.load(io.BytesIO(npy_stream.read()))
+                field_array = np.load(io.BytesIO(npy_stream.read()), allow_pickle=True)
 
             # Determine grid shape from array size
             if field_array.ndim == 3:
