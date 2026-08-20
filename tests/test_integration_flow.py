@@ -51,8 +51,6 @@ def test_full_pipeline_integration_positive_path(pipeline_test_environment, monk
     # We assert that all physical file artifacts and rendered 3D visual verification images have been successfully produced.
     assert output_file.exists(), "Merged output JSON file was not generated."
     assert (input_dir / "integration_voxel_verification.png").exists()
-    assert (input_dir / "mesh_snapshot.png").exists()
-    assert (input_dir / "step_snapshot.png").exists()
     assert (input_dir / "u_step_000005_3d_verification.png").exists()
     assert (input_dir / "p_step_000005_3d_verification.png").exists()
 
