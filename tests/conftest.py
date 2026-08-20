@@ -8,7 +8,6 @@ Description:
     configurations, simulation ZIP archives, and input payloads.
 """
 
-import io
 import json
 import zipfile
 
