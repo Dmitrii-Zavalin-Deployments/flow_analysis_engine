@@ -48,10 +48,13 @@ def main() -> None:
     output_path = input_dir / args.output_file_name
 
     repo_root = Path(__file__).resolve().parent.parent
-    schema_dir = repo_root / "schema"
+
+    # Dynamically resolve root: support temporary pytest fixture roots and production repos
+    base_dir = input_dir.parent if (input_dir.parent / "schema").exists() else repo_root
+    schema_dir = base_dir / "schema"
 
     # Optional configuration validation against flow_analysis_engine_config_schema.json
-    config_path = repo_root / "config" / "config.json"
+    config_path = base_dir / "config" / "config.json"
     config_schema_path = schema_dir / "flow_analysis_engine_config_schema.json"
     if config_path.exists() and config_schema_path.exists():
         logger.info("Initializing configuration parsing and schema validation.")
@@ -68,10 +71,7 @@ def main() -> None:
 
     logger.info("Initializing input parsing and schema validation module.")
     try:
-        # Resolve schema path supporting both local test overrides and standard global schema directory
-        schema_path = input_dir / "schema.json"
-        if not schema_path.exists():
-            schema_path = schema_dir / "flow_analysis_engine_input_schema.json"
+        schema_path = schema_dir / "flow_analysis_engine_input_schema.json"
 
         raw_data = parse_input_file(input_path, schema_path=schema_path)
         logger.info("Successfully parsed and validated input data.")
