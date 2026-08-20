@@ -7,8 +7,9 @@ bounds, mask dimensions, results section presence, zip filename resolution fallb
 and zip file existence under the no-default policy.
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from src.core.processor import process_flow_data
 
