@@ -82,18 +82,17 @@ def process_flow_data(raw_data: dict, input_dir: Path | str) -> dict:
 
     physical_constraints = inputs["physical_constraints"]
 
-    # Resolve zip_filename parameter flexibly from either 'results' or 'inputs'
-    zip_filename = None
-    if "results" in raw_data and isinstance(raw_data["results"], dict):
-        zip_filename = raw_data["results"].get("zip_filename")
+    # Enforce strict schema compliance: zip_filename resides in the results block
+    if "results" not in raw_data or not isinstance(raw_data["results"], dict):
+        logger.error("Missing required 'results' section in raw data.")
+        raise KeyError("Missing required 'results' section in raw data.")
 
-    if not zip_filename and "zip_filename" in inputs:
-        zip_filename = inputs["zip_filename"]
+    results_cfg = raw_data["results"]
+    if "zip_filename" not in results_cfg:
+        logger.error("Missing required 'zip_filename' parameter in results.")
+        raise KeyError("Missing required 'zip_filename' parameter in results.")
 
-    if not zip_filename:
-        logger.error("Missing required 'zip_filename' parameter in results or inputs.")
-        raise KeyError("Missing required 'zip_filename' parameter in results or inputs.")
-
+    zip_filename = results_cfg["zip_filename"]
     zip_path = input_dir / zip_filename
 
     if not zip_path.exists():

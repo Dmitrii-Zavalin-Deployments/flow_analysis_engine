@@ -97,7 +97,9 @@ def main() -> None:
 
     # In-memory ZIP field rendering for simulation .npy results
     try:
-        inputs_dict = raw_data.get("inputs", raw_data)
+        inputs_dict = raw_data.get("inputs")
+        if inputs_dict is None:
+            raise KeyError("Required 'inputs' section is missing from input data.")
 
         # Prioritize dynamic input grid bounds over static config.json template values
         grid_bounds = None
