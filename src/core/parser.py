@@ -50,5 +50,5 @@ def parse_input_file(input_path: Path, schema_path: Path) -> dict:
             logger.error(f"Schema validation failed at [{error_path}]: {e.message}")
             raise ValueError(f"Invalid configuration schema: {e.message} (path: {error_path})") from None
 
-    logger.info("Input file parsed and validated successfully.")
+    logger.info("Successfully parsed and validated input data.")
     return data
