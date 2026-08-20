@@ -8,8 +8,9 @@ write error handling in the main orchestration module.
 """
 
 import sys
-from pathlib import Path
+
 import pytest
+
 from src.main import main
 
 
