@@ -451,6 +451,86 @@
     "bernoulli_boundary_check": {
       "verified": true,
       "details": []
+    },
+    "spatial_interval_analysis": {
+      "coordinate_bounds": {
+        "x_range": [
+          0.0,
+          3.0
+        ],
+        "y_range": [
+          0.0,
+          3.0
+        ],
+        "z_range": [
+          0.0,
+          3.0
+        ]
+      },
+      "index_slices": {
+        "i": [
+          0,
+          4
+        ],
+        "j": [
+          0,
+          4
+        ],
+        "k": [
+          0,
+          3
+        ]
+      },
+      "field_interval_statistics": {
+        "field_p_step_000005.npy": {
+          "min": 0.0,
+          "max": 106.54,
+          "mean": 23.46104443318458,
+          "active_cells": 48
+        },
+        "field_p_step_000010.npy": {
+          "min": 0.0,
+          "max": 106.54,
+          "mean": 22.958828699714804,
+          "active_cells": 48
+        },
+        "field_u_step_000005.npy": {
+          "min": -3.2735749232110454,
+          "max": 0.0,
+          "mean": -0.13335731464788095,
+          "active_cells": 48
+        },
+        "field_u_step_000010.npy": {
+          "min": -3.3697634626858632,
+          "max": 0.0,
+          "mean": -0.1403394390600566,
+          "active_cells": 48
+        },
+        "field_v_step_000005.npy": {
+          "min": -3.2735749232110454,
+          "max": 0.0,
+          "mean": -0.13335731464788092,
+          "active_cells": 48
+        },
+        "field_v_step_000010.npy": {
+          "min": -3.3697634626858637,
+          "max": 0.0,
+          "mean": -0.1403394390600566,
+          "active_cells": 48
+        },
+        "field_w_step_000005.npy": {
+          "min": 0.0,
+          "max": 12.15533667679454,
+          "mean": 0.9199028474332196,
+          "active_cells": 48
+        },
+        "field_w_step_000010.npy": {
+          "min": 0.0,
+          "max": 13.229905357568168,
+          "mean": 0.9422896949493369,
+          "active_cells": 48
+        }
+      }
     }
   }
 }
