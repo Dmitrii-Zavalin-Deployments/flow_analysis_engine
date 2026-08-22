@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FlowAnalysisEngineMasterSchema",
   "description": "Master schema containing nested input run bundle, spatial config schema, and detailed results schema.",
   "type": "object",
@@ -16,7 +16,6 @@
           "required": [
             "grid",
             "fluid_properties",
-            "initial_conditions",
             "simulation_parameters",
             "boundary_conditions",
             "mask",
@@ -37,19 +36,19 @@
               "properties": {
                 "min_velocity": {
                   "type": "number",
-                  "description": "Lower bound for any velocity component (u, v, w)."
+                  "description": "Lower bound for any velocity component (u, v, w). Often 0 or negative for turbulence."
                 },
                 "max_velocity": {
                   "type": "number",
-                  "description": "Upper bound for any velocity component."
+                  "description": "Upper bound for any velocity component. Triggers recovery if exceeded."
                 },
                 "min_pressure": {
                   "type": "number",
-                  "description": "Lower bound for pressure."
+                  "description": "Lower bound for pressure. Prevents non-physical vacuum/sink divergence."
                 },
                 "max_pressure": {
                   "type": "number",
-                  "description": "Upper bound for pressure."
+                  "description": "Upper bound for pressure. Prevents numerical explosions."
                 }
               }
             },
@@ -120,18 +119,18 @@
                 },
                 "nx": {
                   "type": "integer",
-                  "minimum": 1,
-                  "description": "Number of discrete computational cells along the X-axis."
+                  "minimum": 4,
+                  "description": "Number of discrete computational cells along the X-axis. Minimum 4 to prevent stencil cancellation."
                 },
                 "ny": {
                   "type": "integer",
-                  "minimum": 1,
-                  "description": "Number of discrete computational cells along the Y-axis."
+                  "minimum": 4,
+                  "description": "Number of discrete computational cells along the Y-axis. Minimum 4 to prevent stencil cancellation."
                 },
                 "nz": {
                   "type": "integer",
-                  "minimum": 1,
-                  "description": "Number of discrete computational cells along the Z-axis."
+                  "minimum": 4,
+                  "description": "Number of discrete computational cells along the Z-axis. Minimum 4 to prevent stencil cancellation."
                 }
               }
             },
@@ -150,27 +149,6 @@
                 "viscosity": {
                   "type": "number",
                   "minimum": 0
-                }
-              }
-            },
-            "initial_conditions": {
-              "type": "object",
-              "required": [
-                "velocity",
-                "pressure"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "velocity": {
-                  "type": "array",
-                  "minItems": 3,
-                  "maxItems": 3,
-                  "items": {
-                    "type": "number"
-                  }
-                },
-                "pressure": {
-                  "type": "number"
                 }
               }
             },
@@ -252,11 +230,22 @@
             },
             "external_forces": {
               "type": "object",
-              "required": ["force_vector"],
+              "required": [
+                "force_vector",
+                "gravity_vector"
+              ],
               "additionalProperties": false,
               "properties": {
                 "force_vector": {
                   "type": "array",
+                  "description": "Generic external force density vector (e.g., electromagnetic, momentum sources).",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": { "type": "number" }
+                },
+                "gravity_vector": {
+                  "type": "array",
+                  "description": "Gravitational acceleration vector in 3D space used for analytical hydrostatic pressure splitting.",
                   "minItems": 3,
                   "maxItems": 3,
                   "items": { "type": "number" }
@@ -390,9 +379,9 @@
             "nx", "ny", "nz", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max", "dx", "dy", "dz"
           ],
           "properties": {
-            "nx": { "type": "integer", "minimum": 1 },
-            "ny": { "type": "integer", "minimum": 1 },
-            "nz": { "type": "integer", "minimum": 1 },
+            "nx": { "type": "integer", "minimum": 4 },
+            "ny": { "type": "integer", "minimum": 4 },
+            "nz": { "type": "integer", "minimum": 4 },
             "x_min": { "type": "number" },
             "x_max": { "type": "number" },
             "y_min": { "type": "number" },
